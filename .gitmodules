@@ -1,0 +1,3 @@
+[submodule "CARLO"]
+	path = CARLO
+	url = https://github.com/Stanford-ILIAD/CARLO.git
