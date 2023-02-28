@@ -2,4 +2,4 @@
 Avi Udash, Adrian Gamarra, Prerit Choudhary
 
 ### Setup
-Run `git clone --recurse-submodules https://github.com/aviously25/CS238-Final-Project.git`
+Run `git clone https://github.com/aviously25/CS238-Final-Project.git`
