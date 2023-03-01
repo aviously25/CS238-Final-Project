@@ -1,6 +1,9 @@
 from CARLO.entities import RectangleEntity, CircleEntity, RingEntity
 from CARLO.geometry import Point
 
+from math import atan
+import numpy as np
+
 # For colors, we use tkinter colors. See http://www.science.smith.edu/dftwiki/index.php/Color_Charts_for_TKinter
 
 
@@ -12,6 +15,13 @@ class Car(RectangleEntity):
         super(Car, self).__init__(center, heading, size, movable, friction)
         self.color = color
         self.collidable = True
+
+    def get_offset(self, target: float):
+        x = target
+        y = self.heading
+        ret = np.arctan2(np.sin(x-y), np.cos(x-y))
+        #val = (ret * 180) / np.pi if you ever want to turn rads to degs
+        return abs(ret)
 
 
 class Pedestrian(CircleEntity):
