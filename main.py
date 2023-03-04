@@ -5,8 +5,10 @@ from CARLO.geometry import Point
 from CARLO.interactive_controllers import KeyboardController
 from environment import environment, parkingSpot
 import numpy as np
+import time
 
 DT = 0.1  # time steps in terms of seconds. In other words, 1/dt is the FPS.
+
 
 def scenario1():
     # add parking spots
@@ -28,8 +30,11 @@ def scenario1():
     while True:
         c1.set_control(controller.steering, controller.throttle)
         w.tick()
-        print(c1.get_offset(target.heading))
+        # print(c1.get_offset(target.heading))
         w.render()
+
+        # sleep so the car doesn't disappear from rendering too fast
+        time.sleep(DT / 5)
 
         if w.collision_exists():
             import sys
