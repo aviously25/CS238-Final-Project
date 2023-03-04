@@ -18,8 +18,8 @@ def scenario1():
 
     # add car
     c1 = Car(Point(40, 20), np.pi / 2, "blue")
-    c1.max_speed = 10
-    c1.min_speed = -5
+    c1.max_speed = 5
+    c1.min_speed = -2.5
     c1.set_control(0, 0)
     w.add(c1)
 
