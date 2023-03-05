@@ -46,7 +46,7 @@ def scenario1(automated: bool = False):
             controller.do_action(random_action)
 
         # check collision
-        if w.collision_exists():
+        if c1.is_colliding(target):
             print("Collision detected")
 
 
