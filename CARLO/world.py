@@ -1,4 +1,3 @@
-from CARLO.agents import Car, Pedestrian, RectangleBuilding
 from CARLO.entities import Entity
 from typing import Union
 from CARLO.visualizer import Visualizer

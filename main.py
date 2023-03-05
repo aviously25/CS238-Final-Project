@@ -47,9 +47,7 @@ def scenario1(automated: bool = False):
 
         # check collision
         if w.collision_exists():
-            import sys
-
-            sys.exit(0)
+            print("Collision detected")
 
 
 if __name__ == "__main__":
