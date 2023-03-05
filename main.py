@@ -1,13 +1,13 @@
 from CARLO.agents import Car, Painting, RectangleBuilding
 from CARLO.world import World
 from CARLO.geometry import Point
-
 from CARLO.interactive_controllers import AutomatedController, KeyboardController
 from environment import environment, parkingSpot
+
 import numpy as np
 import time
-
 import random
+import sys
 
 DT = 0.1  # time steps in terms of seconds. In other words, 1/dt is the FPS.
 
@@ -31,6 +31,9 @@ def scenario1(automated: bool = False):
     # create controller
     controller = AutomatedController(w) if automated else KeyboardController(w)
 
+    for corner in target.spot.corners:
+        print(corner)
+
     while True:
         c1.set_control(controller.steering, controller.throttle)
         w.tick()
@@ -51,4 +54,10 @@ def scenario1(automated: bool = False):
 
 
 if __name__ == "__main__":
-    scenario1()
+    automated = False
+
+    if len(sys.argv) == 2:
+        if sys.argv[1] == "--automated":
+            automated = True
+
+    scenario1(automated)
