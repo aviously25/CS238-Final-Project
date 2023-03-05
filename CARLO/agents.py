@@ -23,7 +23,10 @@ class Car(RectangleEntity):
     
     def is_colliding(self, parking):
         return self.collidesWith(parking.spot)
-
+    
+    def car_park_distance(self, parking):
+        return math.dist(self.center, parking.center)
+    
 class parkingSpot:
     def __init__(self, w, center: Point, direction: str):
         self.center = center
