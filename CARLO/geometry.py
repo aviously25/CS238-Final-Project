@@ -150,6 +150,31 @@ class Line:
     def __str__(self):
         return "Line(" + str(self.p1) + ", " + str(self.p2) + ")"
 
+    def line_clip(self, other: Union["Rectangle"]):
+        if isinstance(other, Rectangle):
+            INSIDE = 0  # 0000
+            LEFT = 1  # 0001
+            RIGHT = 2  # 0010
+            BOTTOM = 4  # 0100
+            UP = 8  # 1000
+
+            codes = [INSIDE, INSIDE]
+            for point in points:
+                
+            p1_code = INSIDE
+            if self.p1.x < other.corners[0].x:
+                p1_code |= LEFT
+            elif self.p1.x > other.corners[2].x:
+                p1_code |= RIGHT
+            if self.p1.y > other.corners[0].y:
+                p1_code |= UP
+            elif self.p1.y < other.corners[2].y:
+                p1_code |= BOTTOM
+
+            return 0
+
+        raise NotImplemented
+
     def intersectsWith(self, other: Union["Line", "Rectangle", "Circle", "Ring"]):
         if isinstance(other, Line):
             p1 = self.p1
@@ -297,6 +322,9 @@ class Rectangle:
     @property
     def corners(self):
         return [self.c1, self.c2, self.c3, self.c4]
+
+    def intersectArea(self, other: Union["Rectangle"]):
+        return 0
 
     def intersectsWith(
         self, other: Union["Line", "Rectangle", "Circle", "Ring"]
