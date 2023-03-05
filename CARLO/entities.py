@@ -47,9 +47,12 @@ class Entity:
         raise NotImplementedError
 
     
-    def calculate_next_state(self, dt: float):
+    def simulate_next_state(self, dt: float):
+        
         speed = self.speed
         heading = self.heading 
+        
+
         lr = self.rear_dist
         lf = lr  # we assume the center of mass is the same as the geometric center of the entity
         beta = np.arctan(lr / (lf + lr) * np.tan(self.inputSteering))
@@ -70,9 +73,17 @@ class Entity:
         new_velocity = Point(
             new_speed * np.cos(new_heading), new_speed * np.sin(new_heading)
         )
+        calculations =  (new_center, new_heading, new_velocity, new_acceleration, new_angular_velocity)
+        self.center = calculations[0]
         
-        return (new_center, new_heading, new_velocity, new_acceleration, new_angular_velocity)
-
+        self.heading = np.mod(
+            calculations[1], 2 * np.pi
+        )  # wrap the heading angle between 0 and +2pi
+        self.velocity = calculations[2] 
+        self.acceleration = calculations[3]
+        self.angular_velocity = calculations[4]
+        return calculations
+    
 
     def tick(self, dt: float):
         if self.movable:
@@ -94,15 +105,9 @@ class Entity:
             new_center = self.center + (self.velocity + new_velocity) * dt / 2.
             
             """
-            calculations = self.calculate_next_state(dt)
+            self.simulate_next_state(dt)
             
-            self.center = calculations[0]
-            self.heading = np.mod(
-                calculations[1], 2 * np.pi
-            )  # wrap the heading angle between 0 and +2pi
-            self.velocity = calculations[2] 
-            self.acceleration = calculations[3]
-            self.angular_velocity = calculations[4]
+           
 
             self.buildGeometry()
 

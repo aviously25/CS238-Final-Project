@@ -71,7 +71,7 @@ class KeyboardController:
 
 
 class AutomatedController:
-    def __init__(self, world):
+    def __init__(self):
         self._steering = 0.0
         self._throttle = 0.0
 
@@ -98,13 +98,15 @@ class AutomatedController:
         self._throttle = np.clip(val, self.min_throttle, self.max_throttle)
 
     def do_action(self, action: int):
-        if action == 1:
+        if action == 0:
+            pass
+        if action == 1: # speed up
             self.increase_throttle()
-        elif action == 2:
+        elif action == 2: # slow down
             self.decrease_throttle()
-        elif action == 3:
+        elif action == 3: # turn right
             self.steer_right()
-        elif action == 4:
+        elif action == 4: # turn left
             self.steer_left()
 
     def increase_throttle(self):
@@ -114,10 +116,10 @@ class AutomatedController:
         self.throttle -= 1.5
 
     def steer_right(self):
-        self.steering -= 0.5
+        self.steering -= 0.25
 
     def steer_left(self):
-        self.steering += 0.5
+        self.steering += 0.25
 
 
 # class SteeringWheelController:  # For Logitech G29 Steering Wheel

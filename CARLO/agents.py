@@ -1,32 +1,11 @@
 from CARLO.entities import RectangleEntity, CircleEntity, RingEntity
 from CARLO.geometry import Point
 from math import atan
+
 import numpy as np
 
 # For colors, we use tkinter colors. See http://www.science.smith.edu/dftwiki/index.php/Color_Charts_for_TKinter
 
-class Car(RectangleEntity):
-    def __init__(self, center: Point, heading: float, color: str = "red"):
-        size = Point(4.0, 2.0)
-        movable = True
-        friction = 0.06
-        super(Car, self).__init__(center, heading, size, movable, friction)
-        self.color = color
-        self.collidable = True
-
-    def get_offset(self, target: float):
-        x = target
-        y = self.heading
-        ret = np.arctan2(np.sin(x-y), np.cos(x-y))
-        #val = (ret * 180) / np.pi if you ever want to turn rads to degs
-        return abs(ret)
-    
-    def is_colliding(self, parking):
-        return self.collidesWith(parking.spot)
-    
-    def car_park_distance(self, parking):
-        return math.dist(self.center, parking.center)
-    
 class parkingSpot:
     def __init__(self, w, center: Point, direction: str):
         self.center = center
@@ -67,7 +46,34 @@ class parkingSpot:
             
         self.w.add(self.spot)
         self.spot.collidable = True
+    
+class Car(RectangleEntity):
+    def __init__(self, center: Point, heading: float, color: str = "red"):
+        size = Point(4.0, 2.0)
+        movable = True
+        friction = 0.06
+        super(Car, self).__init__(center, heading, size, movable, friction)
+        self.color = color
+        self.collidable = True
+        self.rf = None
+
+    def get_offset(self, target: float):
+        x = target
+        y = self.heading
+        ret = np.arctan2(np.sin(x-y), np.cos(x-y))
+        #val = (ret * 180) / np.pi if you ever want to turn rads to degs
+        return abs(ret)
+    
+    def is_colliding(self, parking):
+        return self.collidesWith(parking.spot)
+    
+    def park_dist(self, parking: parkingSpot, car = None):
+        if(car == None):
+            car = self
         
+        return car.center.distanceTo(parking.spot.center)
+
+
 class Pedestrian(CircleEntity):
     def __init__(
         self, center: Point, heading: float, color: str = "LightSalmon3"

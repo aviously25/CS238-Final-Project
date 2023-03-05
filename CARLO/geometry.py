@@ -161,15 +161,15 @@ class Line:
             codes = [INSIDE, INSIDE]
             for point in points:
                 
-            p1_code = INSIDE
-            if self.p1.x < other.corners[0].x:
-                p1_code |= LEFT
-            elif self.p1.x > other.corners[2].x:
-                p1_code |= RIGHT
-            if self.p1.y > other.corners[0].y:
-                p1_code |= UP
-            elif self.p1.y < other.corners[2].y:
-                p1_code |= BOTTOM
+                p1_code = INSIDE
+                if self.p1.x < other.corners[0].x:
+                    p1_code |= LEFT
+                elif self.p1.x > other.corners[2].x:
+                    p1_code |= RIGHT
+                if self.p1.y > other.corners[0].y:
+                    p1_code |= UP
+                elif self.p1.y < other.corners[2].y:
+                    p1_code |= BOTTOM
 
             return 0
 

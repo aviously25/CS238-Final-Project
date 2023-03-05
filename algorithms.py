@@ -9,45 +9,7 @@ from copy import deepcopy
 class forwardSearch:
     def __init__(self, env: environment):
         self.env = env
-
-    def run_left(self):
-        self.env.controller.do_action(4)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        reward = self.env.rewardFunction()
-        self.env.controller.do_action(3)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        return (reward, 4)
-    
-    def run_right(self):
-        self.env.controller.do_action(3)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        reward = self.env.rewardFunction()
-        self.env.controller.do_action(4)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        return (reward, 3)
-    
-    def run_speed(self):
-        self.env.controller.do_action(1)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        reward = self.env.rewardFunction()
-        self.env.controller.do_action(2)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        return (reward, 1)
-    
-    def run_slow(self):
-        self.env.controller.do_action(2)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        reward = self.env.rewardFunction()
-        self.env.controller.do_action(1)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        return (reward, 2)
-    
-    def run_none(self):
-        self.env.controller.do_action(0)
-        self.env.car.simulate_next_state(self.env.w.dt)
-        reward = self.env.rewardFunction()
-        return (reward, 0)
-    
+            
     def simulate_action(self, action: int, car: Car, dt: float):
         c1 = Car(car.center, car.heading, "blue")
         cont = AutomatedController()
