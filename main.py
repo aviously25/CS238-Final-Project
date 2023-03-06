@@ -35,9 +35,6 @@ def scenario1(automated: bool = False):
 
     fs = forwardSearch(env)
 
-    for corner in target.spot.corners:
-        print(corner)
-
     while True:
         c1.set_control(controller.steering, controller.throttle)
         w.tick()
@@ -46,24 +43,23 @@ def scenario1(automated: bool = False):
 
         # sleep so the car doesn't disappear from rendering too fast
         time.sleep(DT / 5)
-        
+
         # simulate random action if automated
         if automated:
-            if(env.car.park_dist(target) > 4):
+            if env.car.park_dist(target) > 4:
                 reward, best_action = fs.run_iter(env.car, 2)
                 controller.do_action(best_action)
                 print(best_action)
             else:
-                reward, best_action = fs.run_iter(env.car, 1) 
+                reward, best_action = fs.run_iter(env.car, 1)
                 controller.do_action(best_action)
- 
+
             print(reward)
             print(best_action)
-            
 
         # check collision
         if c1.is_colliding(target):
-            print("Collision detected")
+            print(c1.collisionPercent(target))
 
 
 if __name__ == "__main__":

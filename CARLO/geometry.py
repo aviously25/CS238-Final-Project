@@ -1,5 +1,13 @@
 import numpy as np
 from typing import Union
+import functools
+
+# some constants
+INSIDE = 0  # 0000
+LEFT = 1  # 0001
+RIGHT = 2  # 0010
+BOTTOM = 4  # 0100
+UP = 8  # 1000
 
 
 class Point:
@@ -150,30 +158,78 @@ class Line:
     def __str__(self):
         return "Line(" + str(self.p1) + ", " + str(self.p2) + ")"
 
+    # Line clips SELF using OTHER as a rectangular screen, then returns the clipped line
     def line_clip(self, other: Union["Rectangle"]):
-        if isinstance(other, Rectangle):
-            INSIDE = 0  # 0000
-            LEFT = 1  # 0001
-            RIGHT = 2  # 0010
-            BOTTOM = 4  # 0100
-            UP = 8  # 1000
+        if not isinstance(other, Rectangle):
+            raise NotImplementedError
 
-            codes = [INSIDE, INSIDE]
-            for point in points:
-                
-                p1_code = INSIDE
-                if self.p1.x < other.corners[0].x:
-                    p1_code |= LEFT
-                elif self.p1.x > other.corners[2].x:
-                    p1_code |= RIGHT
-                if self.p1.y > other.corners[0].y:
-                    p1_code |= UP
-                elif self.p1.y < other.corners[2].y:
-                    p1_code |= BOTTOM
+        # clip the line if some part of it is outside the rectangle OTHER
+        # using the Cohen Sutherland algorithm referened from:
+        # https://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
+        new_p1 = self.p1
+        new_p2 = self.p2
 
-            return 0
+        y_max = other.corners[0].y
+        y_min = other.corners[2].y
+        x_max = other.corners[0].x
+        x_min = other.corners[2].x
 
-        raise NotImplemented
+        p1_code = _calculate_line_clip_code(new_p1, other.corners)
+        p2_code = _calculate_line_clip_code(new_p2, other.corners)
+        while True:
+
+            # if the entire line is inside the rectangle, just return itself
+            if (p1_code | p2_code) == INSIDE:
+                return Line(new_p1, new_p2)
+
+            # if the entire line is outside the rectangle, just return itself
+            if (p1_code & p2_code) != INSIDE:
+                return None
+                # return Line(new_p1, new_p2)
+
+            # figure out which point is outside
+            outside_point_code = p1_code if p1_code != INSIDE else p2_code
+
+            # Now find the intersection point;
+            # use formulas:
+            #   slope = (y1 - y0) / (x1 - x0)
+            #   x = x0 + (1 / slope) * (ym - y0), where ym is ymin or ymax
+            #   y = y0 + slope * (xm - x0), where xm is xmin or xmax
+            # No need to worry about divide-by-zero because, in each case, the
+            # outcode bit being tested guarantees the denominator is non-zero
+
+            x, y = (0, 0)
+
+            if outside_point_code & UP:
+                x = new_p1.x + (new_p2.x - new_p1.x) * (y_max - new_p1.y) / (
+                    new_p2.y - new_p1.y
+                )
+                y = y_max
+            elif outside_point_code & BOTTOM:
+                x = new_p1.x + (new_p2.x - new_p1.x) * (y_min - new_p1.y) / (
+                    new_p2.y - new_p1.y
+                )
+                y = y_min
+            elif outside_point_code & RIGHT:
+                y = new_p1.y + (new_p2.y - new_p1.y) * (x_max - new_p1.x) / (
+                    new_p2.x - new_p1.x
+                )
+                x = x_max
+            elif outside_point_code & LEFT:
+                y = new_p1.y + (new_p2.y - new_p1.y) * (x_min - new_p1.x) / (
+                    new_p2.x - new_p1.x
+                )
+                x = x_min
+
+            # recalculate line clip codes
+            if outside_point_code == p1_code:
+                new_p1 = Point(x, y)
+                p1_code = _calculate_line_clip_code(new_p1, other.corners)
+            else:
+                new_p2 = Point(x, y)
+                p2_code = _calculate_line_clip_code(new_p2, other.corners)
+
+        return Line(new_p1, new_p2)
 
     def intersectsWith(self, other: Union["Line", "Rectangle", "Circle", "Ring"]):
         if isinstance(other, Line):
@@ -312,6 +368,18 @@ class Rectangle:
         )
 
     @property
+    def area(self):
+        area = 0
+        j = len(self.corners) - 1
+        for i in range(len(self.corners)):
+            area += (self.corners[j].x + self.corners[i].x) * (
+                self.corners[j].y - self.corners[i].y
+            )
+            j = i
+
+        return abs(area / 2)
+
+    @property
     def edges(self):
         e1 = Line(self.c1, self.c2)
         e2 = Line(self.c2, self.c3)
@@ -323,8 +391,52 @@ class Rectangle:
     def corners(self):
         return [self.c1, self.c2, self.c3, self.c4]
 
-    def intersectArea(self, other: Union["Rectangle"]):
-        return 0
+    # check what percent of SELF intersects with OTHER
+    def intersectPercent(self, other: Union["Rectangle"]):
+        # if it doesn't collide, then there is no intersection
+        if not self.intersectsWith(other):
+            return 0
+
+        # line clip every edge
+        poly_points = []
+        for i, edge in enumerate(self.edges):
+            if edge.intersectsWith(other):
+                clipped_line = edge.line_clip(other)
+                if clipped_line is not None:
+                    poly_points.append(clipped_line.p1)
+                    poly_points.append(clipped_line.p2)
+
+        # Check if any of the parking spot corners are in the car.
+        # Need to add if for example, only 1 line of the car actually intersects with the parking spot.
+        # In that case, the above clip loop would only have 2 points to calculate area with, which is not enough
+        for corner in other.corners:
+            if corner.isInside(self):
+                poly_points.append(corner)
+
+        # sort the points in clockwise order
+        # referenced @ciamej's answer from:
+        # https://stackoverflow.com/questions/6989100/sort-points-in-clockwise-order
+        center_point = Point(
+            np.mean([p.x for p in poly_points]), np.mean([p.y for p in poly_points])
+        )
+        sorter = PointSorter(center_point)
+        poly_points = sorter.sortPoints(poly_points)
+
+        # calculate the area of the polygon. Reference:
+        # https://www.mathopenref.com/coordpolygonarea2.html
+        area = 0
+        j = len(poly_points) - 1
+        for i in range(len(poly_points)):
+            area += (poly_points[j].x + poly_points[i].x) * (
+                poly_points[j].y - poly_points[i].y
+            )
+            j = i  # j is previous point to i
+
+        area = abs(area / 2)
+
+        percent = area / self.area
+
+        return percent
 
     def intersectsWith(
         self, other: Union["Line", "Rectangle", "Circle", "Ring"]
@@ -495,3 +607,61 @@ class Ring:
             return 0
 
         raise NotImplementedError  # TODO: implement the other cases
+
+
+# helper function to get line clipping in entity Line
+def _calculate_line_clip_code(point: Point, corners: [Point]):
+
+    code = INSIDE
+
+    if point.x < corners[2].x:
+        code |= LEFT
+    elif point.x > corners[0].x:
+        code |= RIGHT
+    if point.y > corners[0].y:
+        code |= UP
+    elif point.y < corners[2].y:
+        code |= BOTTOM
+
+    return code
+
+
+# helper class to sort a series of Points given a center point
+class PointSorter:
+    def __init__(self, center: Point):
+        self.center = center
+
+    def sortPoints(self, points: [Point]):
+        return sorted(points, key=functools.cmp_to_key(self._cmp_point))
+
+    # sort the points in clockwise order
+    # referenced @ciamej's answer from:
+    # https://stackoverflow.com/questions/6989100/sort-points-in-clockwise-order
+    def _cmp_point(self, a, b):
+        if a.x - self.center.x >= 0 and b.x - self.center.x < 0:
+            return True
+        if a.x - self.center.x < 0 and b.x - self.center.x >= 0:
+            return False
+        if a.x - self.center.x == 0 and b.x - self.center.x == 0:
+            if a.y - self.center.y >= 0 or b.y - self.center.y >= 0:
+                return a.y > b.y
+            return b.y > a.y
+
+        # compute the cross product of vectors (self.center -> a) x (self.center -> b)
+        det = (a.x - self.center.x) * (b.y - self.center.y) - (b.x - self.center.x) * (
+            a.y - self.center.y
+        )
+        if det < 0:
+            return True
+        if det > 0:
+            return False
+
+        # points a and b are on the same line from the self.center
+        # check which point is closer to the self.center
+        d1 = (a.x - self.center.x) * (a.x - self.center.x) + (a.y - self.center.y) * (
+            a.y - self.center.y
+        )
+        d2 = (b.x - self.center.x) * (b.x - self.center.x) + (b.y - self.center.y) * (
+            b.y - self.center.y
+        )
+        return d1 > d2
