@@ -47,8 +47,7 @@ def scenario1(automated: bool = False):
 
         # check collision
         if c1.is_colliding(target):
-            c1.obj.intersectPercent(target.spot.obj)
-            print("Collision detected")
+            print(c1.collisionPercent(target))
 
 
 if __name__ == "__main__":

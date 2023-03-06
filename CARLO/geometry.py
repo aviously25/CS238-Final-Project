@@ -405,7 +405,6 @@ class Rectangle:
                 if clipped_line is not None:
                     poly_points.append(clipped_line.p1)
                     poly_points.append(clipped_line.p2)
-            print()
 
         # Check if any of the parking spot corners are in the car.
         # Need to add if for example, only 1 line of the car actually intersects with the parking spot.

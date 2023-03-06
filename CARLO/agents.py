@@ -5,6 +5,7 @@ import numpy as np
 
 # For colors, we use tkinter colors. See http://www.science.smith.edu/dftwiki/index.php/Color_Charts_for_TKinter
 
+
 class Car(RectangleEntity):
     def __init__(self, center: Point, heading: float, color: str = "red"):
         size = Point(4.0, 2.0)
@@ -17,12 +18,16 @@ class Car(RectangleEntity):
     def get_offset(self, target: float):
         x = target
         y = self.heading
-        ret = np.arctan2(np.sin(x-y), np.cos(x-y))
-        #val = (ret * 180) / np.pi if you ever want to turn rads to degs
+        ret = np.arctan2(np.sin(x - y), np.cos(x - y))
+        # val = (ret * 180) / np.pi if you ever want to turn rads to degs
         return abs(ret)
-    
+
+    def collisionPercent(self, parking):
+        return self.obj.intersectPercent(parking.spot.obj)
+
     def is_colliding(self, parking):
         return self.collidesWith(parking.spot)
+
 
 class parkingSpot:
     def __init__(self, w, center: Point, direction: str):
@@ -35,36 +40,73 @@ class parkingSpot:
 
     def make_spot(self):
         space_size = None
-        if(self.direction == "up"):
-            self.angle = 0.0 # Make it face left so we can get the offset with car
-            self.w.add(Painting(Point(self.center.x-2.5, self.center.y), Point(0.5, 7), "white"))
-            self.w.add(Painting(Point(self.center.x+2.5, self.center.y), Point(0.5, 7), "white"))
-            self.w.add(Painting(Point(self.center.x, self.center.y+3.5), Point(7, 0.5), "white"))
+        if self.direction == "up":
+            self.angle = 0.0  # Make it face left so we can get the offset with car
+            self.w.add(
+                Painting(
+                    Point(self.center.x - 2.5, self.center.y), Point(0.5, 7), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x + 2.5, self.center.y), Point(0.5, 7), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x, self.center.y + 3.5), Point(7, 0.5), "white"
+                )
+            )
             space_size = Point(4, 6)
-            self.heading=np.pi/2
-            
-        elif(self.direction == "left"):
-            self.w.add(Painting(Point(self.center.x, self.center.y-2.5), Point(7, 0.5), "white"))
-            self.w.add(Painting(Point(self.center.x, self.center.y+2.5), Point(7, 0.5), "white"))
-            self.w.add(Painting(Point(self.center.x-3.5, self.center.y), Point(0.5, 7), "white"))
-            space_size = Point(6, 4) 
+            self.heading = np.pi / 2
+
+        elif self.direction == "left":
+            self.w.add(
+                Painting(
+                    Point(self.center.x, self.center.y - 2.5), Point(7, 0.5), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x, self.center.y + 2.5), Point(7, 0.5), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x - 3.5, self.center.y), Point(0.5, 7), "white"
+                )
+            )
+            space_size = Point(6, 4)
             self.heading = np.pi
 
-        elif(self.direction == "right"):
-            self.w.add(Painting(Point(self.center.x, self.center.y-2.5), Point(7, 0.5), "white"))
-            self.w.add(Painting(Point(self.center.x, self.center.y+2.5), Point(7, 0.5), "white"))
-            self.w.add(Painting(Point(self.center.x+3.5, self.center.y), Point(0.5, 7), "white"))
+        elif self.direction == "right":
+            self.w.add(
+                Painting(
+                    Point(self.center.x, self.center.y - 2.5), Point(7, 0.5), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x, self.center.y + 2.5), Point(7, 0.5), "white"
+                )
+            )
+            self.w.add(
+                Painting(
+                    Point(self.center.x + 3.5, self.center.y), Point(0.5, 7), "white"
+                )
+            )
             space_size = Point(6, 4)
             self.heading = 0
 
-        if(not self.parkable):
+        if not self.parkable:
             self.spot = Painting(self.center, space_size, "red")
-        else: 
+        else:
             self.spot = Painting(self.center, space_size, "green")
-            
+
         self.w.add(self.spot)
         self.spot.collidable = True
-        
+
+
 class Pedestrian(CircleEntity):
     def __init__(
         self, center: Point, heading: float, color: str = "LightSalmon3"
