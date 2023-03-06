@@ -31,9 +31,6 @@ def scenario1(automated: bool = False):
     # create controller
     controller = AutomatedController(w) if automated else KeyboardController(w)
 
-    for corner in target.spot.corners:
-        print(corner)
-
     while True:
         c1.set_control(controller.steering, controller.throttle)
         w.tick()
@@ -50,6 +47,7 @@ def scenario1(automated: bool = False):
 
         # check collision
         if c1.is_colliding(target):
+            c1.obj.intersectPercent(target.spot.obj)
             print("Collision detected")
 
 
