@@ -19,7 +19,7 @@ def scenario1(automated: bool = False):
     target = env.setUp()
 
     # add car
-    c1 = Car(Point(40, 20), np.pi / 2, "blue")
+    c1 = Car(Point(40, 10), np.pi / 2, "blue")
     env.car = c1
     c1.max_speed = 1
     c1.min_speed = -2.5
@@ -50,13 +50,18 @@ def scenario1(automated: bool = False):
         # simulate random action if automated
         if automated:
             if(env.car.park_dist(target) > 4):
-                reward, best_action = fs.run_iter(env.car, 2)
+                reward, best_action = fs.run_iter(env.car, 3)
                 controller.do_action(best_action)
                 print(best_action)
             else:
                 reward, best_action = fs.run_iter(env.car, 1) 
                 controller.do_action(best_action)
- 
+
+            if(env.collide_non_target(c1)):
+                print("car crashed")
+                time.sleep(10)
+                sys.exit(0)  
+
             print(reward)
             print(best_action)
             

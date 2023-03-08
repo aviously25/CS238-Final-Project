@@ -109,8 +109,8 @@ class AutomatedController:
         elif action == 4: # turn left
             self.steer_left()
 
-    def increase_throttle(self):
-        self.throttle += 1.5
+    def increase_throttle(self, val=5):
+        self.throttle += val
 
     def decrease_throttle(self):
         self.throttle -= 1.5

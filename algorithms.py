@@ -9,7 +9,7 @@ from copy import deepcopy
 class forwardSearch:
     def __init__(self, env: environment):
         self.env = env
-            
+
     def simulate_action(self, action: int, car: Car, dt: float):
         c1 = Car(car.center, car.heading, "blue")
         cont = AutomatedController()
@@ -62,11 +62,6 @@ class forwardSearch:
         best = np.argmax(sims)
         
         return sims[best], best
-    
-    def forward_search(self, car: Car):
-        pass
-    
-
     
 
     
