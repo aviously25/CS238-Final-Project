@@ -100,13 +100,13 @@ class AutomatedController:
     def do_action(self, action: int):
         if action == 0:
             pass
-        if action == 1: # speed up
+        if action == 1:  # speed up
             self.increase_throttle()
-        elif action == 2: # slow down
+        elif action == 2:  # slow down
             self.decrease_throttle()
-        elif action == 3: # turn right
+        elif action == 3:  # turn right
             self.steer_right()
-        elif action == 4: # turn left
+        elif action == 4:  # turn left
             self.steer_left()
 
     def increase_throttle(self, val=5):

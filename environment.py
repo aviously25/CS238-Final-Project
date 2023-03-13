@@ -17,15 +17,15 @@ class environment:
         self.parkingSpots = [
             parkingSpot(self.w, point, direction)
             for point, direction in [
-                (Point(35, 50), "up"),
-                (Point(40, 50), "up"),
-                (Point(45, 50), "up"),
-                (Point(25, 30), "left"),
-                (Point(25, 35), "left"),
-                (Point(25, 40), "left"),
-                (Point(55, 30), "right"),
-                (Point(55, 35), "right"),
-                (Point(55, 40), "right"),
+                (Point(10, 30), "up"),
+                (Point(15, 30), "up"),
+                (Point(20, 30), "up"),
+                (Point(5, 10), "left"),
+                (Point(5, 15), "left"),
+                (Point(5, 20), "left"),
+                (Point(25, 10), "right"),
+                (Point(25, 15), "right"),
+                (Point(25, 20), "right"),
             ]
         ]
         selected = self.parkingSpots[random.randint(0, 8)]
@@ -48,6 +48,10 @@ class environment:
                 return True
 
         return False
+
+    def get_state(self):
+
+        return 0
 
     def reward_function(self, car=None):
         if car is None:
