@@ -44,7 +44,7 @@ def q_learning(automated: bool = False):
         time.sleep(DT / 5)
 
 
-def forwardSearch(automated: bool = False):
+def forwardSearch(automated: bool = True):
     # add parking spots
     w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
     env = environment(w)
@@ -100,12 +100,14 @@ def forwardSearch(automated: bool = False):
         print(env.reward_function(c1))
 
 if __name__ == "__main__":
-    automated = True
+    task = 'q'
 
     if len(sys.argv) == 2:
-        if sys.argv[1] == "--automated":
-            
-            automated = True
+        task = sys.argv[1]
 
-    #q_learning(automated)
-    forwardSearch(automated)
+    if task == 'q':
+        q_learning()
+    elif task == 'f':
+        forwardSearch()
+    else:
+        forwardSearch(False)
