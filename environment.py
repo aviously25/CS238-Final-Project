@@ -13,7 +13,7 @@ class environment:
         self.w = w
         self.controller = None
 
-    def setUp(self):
+    def setUp(self, target=None):
         self.parkingSpots = [
             parkingSpot(self.w, point, direction)
             for point, direction in [
@@ -28,7 +28,10 @@ class environment:
                 (Point(25, 20), "right"),
             ]
         ]
-        selected = self.parkingSpots[random.randint(0, 8)]
+        if target == None:
+            selected = self.parkingSpots[random.randint(0, 8)]
+        else:
+            selected = self.parkingSpots[target]
         selected.parkable = True
         self.target = selected
 
@@ -60,6 +63,6 @@ class environment:
 
         value = (self.collide_non_target(car=car) * -100000)
         value += (car.park_dist(self.target, car=car) * -1000)
-        value += (car.get_offset(self.target.heading) * -1)
+        value += (car.get_offset(self.target.heading) * -200)
 
         return value

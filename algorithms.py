@@ -74,7 +74,7 @@ class QLearning:
         )
 
 
-class forwardSearch:
+class ForwardSearch:
     # Why does forward search fail?
     # Its because it seeks out the highest reward which isnt always
     # in our best interest. For example, it will get really close to

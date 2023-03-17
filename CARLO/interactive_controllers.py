@@ -79,7 +79,7 @@ class AutomatedController:
         self.max_steering = +0.5
 
         self.min_throttle = -1.5
-        self.max_throttle = +1.5
+        self.max_throttle = 3
 
     @property
     def steering(self):
@@ -109,7 +109,7 @@ class AutomatedController:
         elif action == 4:  # turn left
             self.steer_left()
 
-    def increase_throttle(self, val=3):
+    def increase_throttle(self, val=5):
         self.throttle += val
 
     def decrease_throttle(self):

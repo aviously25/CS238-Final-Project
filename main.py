@@ -3,7 +3,7 @@ from CARLO.world import World
 from CARLO.geometry import Point
 from CARLO.interactive_controllers import AutomatedController, KeyboardController
 from environment import environment, parkingSpot
-from algorithms import forwardSearch, QLearning
+from algorithms import ForwardSearch, QLearning
 import numpy as np
 import time
 import random
@@ -48,10 +48,10 @@ def forwardSearch(automated: bool = False):
     # add parking spots
     w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
     env = environment(w)
-    target = env.setUp()
+    target = env.setUp(3)
 
     # add car
-    c1 = Car(Point(15, 5), np.pi / 2, "blue")
+    c1 = Car(Point(15, 3), np.pi / 2, "blue")
     env.car = c1
     c1.max_speed = 1
     c1.min_speed = -2.5
@@ -65,7 +65,7 @@ def forwardSearch(automated: bool = False):
     controller = AutomatedController() if automated else KeyboardController(w)
     env.controller = controller
 
-    fs = forwardSearch(env)
+    fs = ForwardSearch(env)
 
     while True:
         c1.set_control(controller.steering, controller.throttle)
@@ -100,7 +100,7 @@ def forwardSearch(automated: bool = False):
         print(env.reward_function(c1))
 
 if __name__ == "__main__":
-    automated = False
+    automated = True
 
     if len(sys.argv) == 2:
         if sys.argv[1] == "--automated":
