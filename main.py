@@ -3,7 +3,7 @@ from CARLO.world import World
 from CARLO.geometry import Point
 from CARLO.interactive_controllers import AutomatedController, KeyboardController
 from environment import environment, parkingSpot
-from algorithms import forwardSearch, QLearning
+from algorithms import ForwardSearch, QLearning
 import numpy as np
 import time
 import random
@@ -44,14 +44,14 @@ def q_learning(automated: bool = False):
         time.sleep(DT / 5)
 
 
-def forwardSearch(automated: bool = False):
+def forwardSearch(automated: bool = True):
     # add parking spots
     w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
     env = environment(w)
-    target = env.setUp()
+    target = env.setUp(3)
 
     # add car
-    c1 = Car(Point(15, 5), np.pi / 2, "blue")
+    c1 = Car(Point(15, 3), np.pi / 2, "blue")
     env.car = c1
     c1.max_speed = 1
     c1.min_speed = -2.5
@@ -65,7 +65,7 @@ def forwardSearch(automated: bool = False):
     controller = AutomatedController() if automated else KeyboardController(w)
     env.controller = controller
 
-    fs = forwardSearch(env)
+    fs = ForwardSearch(env)
 
     while True:
         c1.set_control(controller.steering, controller.throttle)
@@ -78,7 +78,7 @@ def forwardSearch(automated: bool = False):
 
         # simulate random action if automated
         if automated:
-            if env.car.park_dist(target) > 4:
+            if env.car.park_dist(target) > 2:
                 reward, best_action = fs.run_iter(env.car, 2)
                 controller.do_action(best_action)
                 print(best_action)
@@ -88,8 +88,8 @@ def forwardSearch(automated: bool = False):
 
             if env.collide_non_target(c1):
                 print("car crashed")
-                time.sleep(10)
-                sys.exit(0)
+                time.sleep(3)
+                sys.exit(0)  
 
             print(reward)
             print(best_action)
@@ -97,14 +97,17 @@ def forwardSearch(automated: bool = False):
         # check collision
         if c1.is_colliding(target):
             print(c1.collisionPercent(target))
-
+        print(env.reward_function(c1))
 
 if __name__ == "__main__":
-    automated = False
+    task = 'q'
 
     if len(sys.argv) == 2:
-        if sys.argv[1] == "--automated":
-            automated = True
+        task = sys.argv[1]
 
-    q_learning(automated)
-    # forwardSearch(automated)
+    if task == 'q':
+        q_learning()
+    elif task == 'f':
+        forwardSearch()
+    else:
+        forwardSearch(False)

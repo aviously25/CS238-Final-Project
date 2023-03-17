@@ -74,7 +74,12 @@ class QLearning:
         )
 
 
-class forwardSearch:
+class ForwardSearch:
+    # Why does forward search fail?
+    # Its because it seeks out the highest reward which isnt always
+    # in our best interest. For example, it will get really close to
+    # a parking spot because that would maximize reward (distance)
+    # , which we dont want cause it will crash.
     def __init__(self, env: environment):
         self.env = env
 
@@ -88,7 +93,8 @@ class forwardSearch:
         c1.lf = c1.lr
         c1.max_speed = 0.5
         c1.min_speed = -2.5
-        c1.set_control(0, 0)
+        c1.angular_velocity = car.angular_velocity
+        c1.set_control(0, 0) 
 
         cont.do_action(action)
         c1.set_control(cont.steering, cont.throttle)
@@ -101,7 +107,7 @@ class forwardSearch:
     def run_iter(self, car: Car, iter):
 
         # make 5 copies of self.car
-        dt = self.env.w.dt * 60
+        dt = self.env.w.dt*20
 
         none, n_c = self.simulate_action(0, car, dt)
         speed, n_s = self.simulate_action(1, car, dt)
