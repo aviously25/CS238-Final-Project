@@ -109,7 +109,7 @@ class Car(RectangleEntity):
         return self.collidesWith(parking.spot)
 
     def park_dist(self, parking: parkingSpot, car=None):
-        if car == None:
+        if car is None:
             car = self
 
         return car.center.distanceTo(parking.spot.center)

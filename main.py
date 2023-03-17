@@ -78,7 +78,7 @@ def forwardSearch(automated: bool = False):
 
         # simulate random action if automated
         if automated:
-            if env.car.park_dist(target) > 4:
+            if env.car.park_dist(target) > 2:
                 reward, best_action = fs.run_iter(env.car, 2)
                 controller.do_action(best_action)
                 print(best_action)
@@ -88,8 +88,8 @@ def forwardSearch(automated: bool = False):
 
             if env.collide_non_target(c1):
                 print("car crashed")
-                time.sleep(10)
-                sys.exit(0)
+                time.sleep(3)
+                sys.exit(0)  
 
             print(reward)
             print(best_action)
@@ -97,14 +97,15 @@ def forwardSearch(automated: bool = False):
         # check collision
         if c1.is_colliding(target):
             print(c1.collisionPercent(target))
-
+        print(env.reward_function(c1))
 
 if __name__ == "__main__":
     automated = False
 
     if len(sys.argv) == 2:
         if sys.argv[1] == "--automated":
+            
             automated = True
 
-    q_learning(automated)
-    # forwardSearch(automated)
+    #q_learning(automated)
+    forwardSearch(automated)
