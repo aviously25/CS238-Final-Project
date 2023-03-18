@@ -15,11 +15,11 @@ DT = 0.1  # time steps in terms of seconds. In other words, 1/dt is the FPS.
 def q_learning(automated: bool = False):
     w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
     env = environment(w)
-    target = env.setUp()
+    target = env.setUp(1)
 
     Q = QLearning(env)
 
-    Q.train(env, w)
+    Q.train_threads(env, w)
 
 
 def forwardSearch(automated: bool = True):

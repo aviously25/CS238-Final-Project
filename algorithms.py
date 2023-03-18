@@ -6,12 +6,13 @@ from CARLO.geometry import Point
 
 import numpy as np
 from copy import deepcopy
-from random import randrange, choice
+from random import random, choice
 from tqdm import tqdm
 import time
+from threading import Thread
 
 MAX_CAR_SPEED = 2.5
-PPM_MODIFIER = 10
+PPM_MODIFIER = 32
 
 
 class QLearning:
@@ -28,9 +29,9 @@ class QLearning:
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
         self.discount_factor = 0.95
-        self.q_table = np.full((self.num_states, self.num_actions), -10000)
-        self.learning_rate = 2
-        self.exploration_prob = 0.3
+        self.q_table = np.full((self.num_states, self.num_actions), 0, dtype=np.float)
+        self.learning_rate = 0.1
+        self.exploration_prob = 0
 
     # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self, car):
@@ -73,25 +74,109 @@ class QLearning:
         state = self.get_state(car)
         action = (
             np.argmax(self.q_table[state])
-            if randrange(0, 1) < self.exploration_prob
+            if random() < self.exploration_prob
             else choice([i for i in range(self.num_actions)])
         )
-        print(np.argmax(self.q_table[state]), self.q_table[state][action])
+        # print(np.argmax(self.q_table[state]), self.q_table[state][action])
         reward, c1 = self.simulate_action(action, car, dt)
-        next_state = self.get_state(car)
+        next_state = self.get_state(c1)
 
-        self.q_table[
-            state, action
-        ] += self.learning_rate * reward + self.discount_factor * max(
-            self.q_table[next_state, :]
-        )
+        try:
+            self.q_table[state, action] += self.learning_rate * (
+                reward
+                + self.discount_factor * max(self.q_table[next_state])
+                - self.q_table[state, action]
+            )
+        except OverflowError as err:
+            print(err.args)
+            print(
+                self.learning_rate * reward
+                + self.discount_factor * max(self.q_table[next_state, :])
+            )
+        except Exception as err:
+            print(err.args)
 
         return action
 
-    def train(
-        self, env: environment, w: World, num_episodes: int = 1000, num_threads: int = 5
+    def run_episode(self, env, car, controller, start_time, w):
+        while True:
+            action = self.run_iter(car)
+            controller.do_action(action)
+            car.set_control(controller.steering, controller.throttle)
+
+            car.tick(w.dt)
+            # w.render()
+
+            if (
+                time.time() - start_time > 20
+                or car.check_bounds(w)
+                or env.collide_non_target(car)
+            ):
+                final_reward = env.reward_function(car)
+                return
+
+        # w.render()
+
+        # sleep so the car doesn't disappear from rendering too fast
+        # time.sleep(w.dt / 10)
+
+        # check conditions to break
+
+    def train_threads(
+        self,
+        env: environment,
+        w: World,
+        num_episodes: int = 10000,
+        num_threads: int = 5,
     ):
-        for i in range(num_episodes):
+        print(self.num_states)
+        for i in tqdm(range(num_episodes)):
+            # init variables for running an episode
+            start_time = time.time()
+
+            cars = []
+            controllers = []
+            threads = []
+            for i in range(num_threads):
+                cars.append(Car(Point(15, 5), np.pi / 2, "blue"))
+                cars[i].max_speed = MAX_CAR_SPEED
+                cars[i].min_speed = -2.5
+                cars[i].set_control(0, 0)
+                w.add(cars[i])
+                controllers.append(AutomatedController())
+                threads.append(
+                    Thread(
+                        target=self.run_episode,
+                        args=(env, cars[i], controllers[i], start_time, w),
+                    )
+                )
+
+            # run the episodes
+            for thread in threads:
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            w.render()
+
+            # sleep so the car doesn't disappear from rendering too fast
+            # time.sleep(w.dt / 10)
+
+            # remove car when done
+            for car in cars:
+                w.remove(car)
+
+    def train(
+        self,
+        env: environment,
+        w: World,
+        num_episodes: int = 10000,
+        num_threads: int = 5,
+    ):
+        print(self.num_states)
+        for i in tqdm(range(num_episodes)):
+
             # initialize car
             car = Car(Point(15, 5), np.pi / 2, "blue")
             car.max_speed = MAX_CAR_SPEED
@@ -106,10 +191,10 @@ class QLearning:
 
             # init variables for running an episode
             start_time = time.time()
-            run_sim = True
+            final_reward = 0
 
             # run the episode
-            while run_sim:
+            while True:
                 car.set_control(controller.steering, controller.throttle)
 
                 action = self.run_iter(car)
@@ -119,12 +204,19 @@ class QLearning:
                 w.render()
 
                 # sleep so the car doesn't disappear from rendering too fast
-                time.sleep(w.dt / 5)
+                time.sleep(w.dt / 10)
 
-                if time.time() - start_time > 20 or self.get_state(car) < 0:
-                    run_sim = False
+                # check conditions to break
+                if (
+                    time.time() - start_time > 20
+                    or car.check_bounds(w)
+                    or env.collide_non_target(car)
+                ):
+                    final_reward = env.reward_function(car)
+                    break
 
             # remove car when done
+            print("Final Reward: ", final_reward)
             w.remove(car)
 
 
