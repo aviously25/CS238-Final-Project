@@ -1,78 +1,131 @@
 from CARLO.agents import Car
-from environment import environment as env
-from CARLO.interactive_controllers import AutomatedController
 from environment import environment
+from CARLO.interactive_controllers import AutomatedController
+from CARLO.world import World
+from CARLO.geometry import Point
 
 import numpy as np
 from copy import deepcopy
 from random import randrange, choice
+from tqdm import tqdm
+import time
+
+MAX_CAR_SPEED = 2.5
+PPM_MODIFIER = 10
 
 
 class QLearning:
     def __init__(self, env: environment, num_sims=1000, num_episodes=100):
         self.env = env
         self.states_dim = [
-            int(env.w.visualizer.display_width / 2),  # num of possible x positions
-            int(env.w.visualizer.display_height / 2),  # num of possible y positions
-            int(env.car.max_speed * 10),  # possible speed values (1 decimal places)
-            int(2 * np.pi * 10),  # heading angle (1 decimal places)
+            int(env.w.visualizer.display_width / PPM_MODIFIER)
+            + 1,  # num of possible x positions
+            int(env.w.visualizer.display_height / PPM_MODIFIER)
+            + 1,  # num of possible y positions
+            int(MAX_CAR_SPEED * 10) + 1,  # possible speed values (1 decimal places)
+            int(2 * np.pi * 10) + 1,  # heading angle (1 decimal places)
         ]
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
         self.discount_factor = 0.95
-        self.q_table = np.zeros((self.num_states, self.num_actions))
-        self.learning_rate = 0.01
-        self.exploration_prob = 0.1
+        self.q_table = np.full((self.num_states, self.num_actions), -10000)
+        self.learning_rate = 2
+        self.exploration_prob = 0.3
 
     # the function will take the 4-parameter vector and turn it into 1 number
-    def get_state(self):
-        x = int(self.env.car.x * self.env.w.visualizer.ppm / 2)
-        y = int(self.env.car.y * self.env.w.visualizer.ppm / 2)
-        speed = int(self.env.car.speed * 10)
-        heading = int(self.env.car.heading * 10)
+    def get_state(self, car):
+        x = int(car.x * self.env.w.visualizer.ppm / PPM_MODIFIER)
+        y = int(car.y * self.env.w.visualizer.ppm / PPM_MODIFIER)
+        speed = int(car.speed * 10)
+        heading = int(car.heading * 10)
 
-        return np.ravel_multi_index(
-            (x, y, speed, heading),
-            dims=tuple(self.states_dim),
-        )
+        try:
+            return np.ravel_multi_index(
+                (x, y, speed, heading),
+                dims=tuple(self.states_dim),
+            )
+        except Exception:
+            return -1
 
     def simulate_action(self, action: int, car: Car, dt: float):
-        c1 = Car(car.center, car.heading, "blue")
-        cont = AutomatedController()
+        test_car = Car(car.center, car.heading, "blue")
+        controller = AutomatedController()
 
-        c1.velocity = car.velocity
-        c1.heading = car.heading
-        c1.lr = car.rear_dist
-        c1.lf = c1.lr
-        c1.max_speed = 0.5
-        c1.min_speed = -2.5
-        c1.set_control(0, 0)
+        test_car.velocity = car.velocity
+        test_car.heading = car.heading
+        test_car.lr = car.rear_dist
+        test_car.lf = test_car.lr
+        test_car.max_speed = MAX_CAR_SPEED
+        test_car.min_speed = -2.5
+        test_car.set_control(0, 0)
 
-        cont.do_action(action)
-        c1.set_control(cont.steering, cont.throttle)
-        state = c1.simulate_next_state(dt)
+        controller.do_action(action)
+        test_car.set_control(controller.steering, controller.throttle)
+        state = test_car.simulate_next_state(dt)
 
-        reward = self.env.reward_function(car=c1)
+        reward = self.env.reward_function(car=test_car)
 
-        return reward, c1
+        return reward, test_car
 
-    def run_iter(self):
+    def run_iter(self, car: Car):
         dt = self.env.w.dt
 
-        state = self.get_state()
+        state = self.get_state(car)
         action = (
             np.argmax(self.q_table[state])
-            if randrange(0, 1) > self.exploration_prob
+            if randrange(0, 1) < self.exploration_prob
             else choice([i for i in range(self.num_actions)])
         )
-        reward, c1 = self.simulate_action(action, self.env.car, dt)
-        next_state = self.get_state()
+        print(np.argmax(self.q_table[state]), self.q_table[state][action])
+        reward, c1 = self.simulate_action(action, car, dt)
+        next_state = self.get_state(car)
 
         self.q_table[
             state, action
         ] += self.learning_rate * reward + self.discount_factor * max(
             self.q_table[next_state, :]
         )
+
+        return action
+
+    def train(
+        self, env: environment, w: World, num_episodes: int = 1000, num_threads: int = 5
+    ):
+        for i in range(num_episodes):
+            # initialize car
+            car = Car(Point(15, 5), np.pi / 2, "blue")
+            car.max_speed = MAX_CAR_SPEED
+            car.min_speed = -2.5
+            car.set_control(0, 0)
+            w.add(car)
+
+            # initialize controller
+            controller = AutomatedController()
+
+            w.render()
+
+            # init variables for running an episode
+            start_time = time.time()
+            run_sim = True
+
+            # run the episode
+            while run_sim:
+                car.set_control(controller.steering, controller.throttle)
+
+                action = self.run_iter(car)
+                controller.do_action(action)
+
+                w.tick()
+                w.render()
+
+                # sleep so the car doesn't disappear from rendering too fast
+                time.sleep(w.dt / 5)
+
+                if time.time() - start_time > 20 or self.get_state(car) < 0:
+                    run_sim = False
+
+            # remove car when done
+            w.remove(car)
 
 
 class ForwardSearch:

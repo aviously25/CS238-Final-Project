@@ -17,33 +17,9 @@ def q_learning(automated: bool = False):
     env = environment(w)
     target = env.setUp()
 
-    # add car
-    c1 = Car(Point(15, 5), np.pi / 2, "blue")
-    env.car = c1
-    c1.max_speed = 2.5
-    c1.min_speed = -2.5
-    c1.set_control(0, 0)
-    w.add(c1)
-
-    # render world
-    w.render()
-
-    controller = AutomatedController()
-    env.controller = controller
-
     Q = QLearning(env)
 
-    print(Q.states_dim)
-    print(Q.num_states)
-
-    while True:
-        w.tick()
-        w.render()
-
-        Q.run_iter()
-
-        # sleep so the car doesn't disappear from rendering too fast
-        time.sleep(DT / 5)
+    Q.train(env, w)
 
 
 def forwardSearch(automated: bool = True):

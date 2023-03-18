@@ -20,6 +20,10 @@ class World:
         else:
             self.static_agents.append(entity)
 
+    def remove(self, entity: Entity):
+        if entity.movable:
+            self.dynamic_agents.remove(entity)
+
     def tick(self):
         for agent in self.dynamic_agents:
             agent.tick(self.dt)
