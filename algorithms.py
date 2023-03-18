@@ -131,8 +131,8 @@ class QLearning:
         dest = "policy_"+str(self.env.park_index)+ ".txt"
         with open(dest, 'w') as f:
             for s in range(len(self.q_table)): # for each state
-                f.write(str(np.argmax(self.q_table[s]))+'\n') # action is the one with the highest reward
-
+                #f.write(str(np.argmax(self.q_table[s]))+'\n') # action is the one with the highest reward
+                f.write("1\n")
                 if s %100000 == 0:
                     print(s)
 
