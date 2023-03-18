@@ -15,7 +15,7 @@ class environment:
         self.w = w
         self.controller = None
 
-    def setUp(self, target=None):
+    def setUp(self, index=None):
         self.parkingSpots = [
             parkingSpot(self.w, point, direction)
             for point, direction in [
@@ -30,10 +30,11 @@ class environment:
                 (Point(25, 20), "right"),
             ]
         ]
-        if target == None:
-            selected = self.parkingSpots[random.randint(0, 8)]
-        else:
-            selected = self.parkingSpots[target]
+
+        if index == None:
+            index = random.randint(0, 8)
+        self.park_index = index 
+        selected = self.parkingSpots[index]
         selected.parkable = True
         self.target = selected
 

@@ -11,20 +11,90 @@ import sys
 
 DT = 0.1  # time steps in terms of seconds. In other words, 1/dt is the FPS.
 
+def run_policy(file):
+    print("Running policy")
+
+    q_table = np.loadtxt(file)
+
+    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
+    env = environment(w)
+    env.setUp(3)
+
+    # initialize car
+    car = Car(Point(15, 5), np.pi / 2, "blue")
+    car.max_speed = 2.5
+    car.min_speed = -2.5
+    car.set_control(0, 0)
+    w.add(car)
+
+    # initialize controller
+    controller = AutomatedController()
+
+    w.render()
+
+    # init variables for running an episode
+    start_time = time.time()
+    run_sim = True
+    q = QLearning(env)
+    # run the episode
+    while run_sim:
+        car.set_control(controller.steering, controller.throttle)
+
+        action = q_table[q.get_state(car)]
+        controller.do_action(action)
+
+        w.tick()
+        w.render()
+
+        # sleep so the car doesn't disappear from rendering too fast
+        time.sleep(w.dt / 5)
+
+        if time.time() - start_time > 20 or q.get_state(car) < 0:
+            run_sim = False
+
+    # remove car when done
+    w.remove(car)
+    
 
 def q_learning(automated: bool = False):
-    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
+    print("Running q")
+    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
     env = environment(w)
-    target = env.setUp()
+    env.setUp(3)
+
+    # add car
+    c1 = Car(Point(15, 5), np.pi / 2, "blue")
+    env.car = c1
+    c1.max_speed = 2.5
+    c1.min_speed = -2.5
+    c1.set_control(0, 0)
+    w.add(c1)
+
+    # render world
+    w.render()
+
+    controller = AutomatedController()
+    env.controller = controller
 
     Q = QLearning(env)
 
-    Q.train(env, w)
+    print(Q.states_dim)
+    print(Q.num_states)
+    
+    Q.write_policy()
+
+    #while True:
+        #w.tick()
+        #w.render()
+
+        # sleep so the car doesn't disappear from rendering too fast
+        #time.sleep(DT / 5)
 
 
 def forwardSearch(automated: bool = True):
+    print("Running forward")
     # add parking spots
-    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=16)
+    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
     env = environment(w)
     target = env.setUp(3)
 
@@ -67,7 +137,7 @@ def forwardSearch(automated: bool = True):
             if env.collide_non_target(c1):
                 print("car crashed")
                 time.sleep(3)
-                sys.exit(0)
+                sys.exit(0)  
 
             print(reward)
             print(best_action)
@@ -75,17 +145,20 @@ def forwardSearch(automated: bool = True):
         # check collision
         if c1.is_colliding(target):
             print(c1.collisionPercent(target))
-
+        print(env.reward_function(c1))
 
 if __name__ == "__main__":
-    task = "q"
+    task = 'q'
 
-    if len(sys.argv) == 2:
+    if len(sys.argv) >= 2:
         task = sys.argv[1]
 
-    if task == "q":
+    if task == 'q':
         q_learning()
-    elif task == "f":
+    elif task == 'f':
         forwardSearch()
+    elif task == 'p':
+        file = sys.argv[2]
+        run_policy(file)
     else:
         forwardSearch(False)
