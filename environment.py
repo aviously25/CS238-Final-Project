@@ -3,10 +3,12 @@ from CARLO.agents import parkingSpot
 import numpy as np
 import random
 from copy import deepcopy
+from CARLO.world import World
+from CARLO.agents import Car
 
 
 class environment:
-    def __init__(self, w):
+    def __init__(self, w: World):
         self.parkingSpots = []
         self.target = None
         self.car = None

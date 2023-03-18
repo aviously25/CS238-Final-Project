@@ -2,6 +2,7 @@ from CARLO.entities import RectangleEntity, CircleEntity, RingEntity
 from CARLO.geometry import Point
 from math import atan
 
+import time
 import numpy as np
 
 # For colors, we use tkinter colors. See http://www.science.smith.edu/dftwiki/index.php/Color_Charts_for_TKinter
@@ -94,6 +95,7 @@ class Car(RectangleEntity):
         self.color = color
         self.collidable = True
         self.rf = None
+        self.id = (int(time.monotonic_ns()))
 
     def get_offset(self, target: float):
         x = target
@@ -113,6 +115,19 @@ class Car(RectangleEntity):
             car = self
 
         return car.center.distanceTo(parking.spot.center)
+    
+    def check_bounds(self, w):
+
+        width = w.visualizer.display_width
+        height = w.visualizer.display_height
+        ppm = w.visualizer.ppm
+
+        if (self.x < 0 or self.x > width/ppm) \
+            or (self.y < 0 or self.y > height/ppm):
+            return True
+
+        return False
+            
 
 
 class Pedestrian(CircleEntity):
