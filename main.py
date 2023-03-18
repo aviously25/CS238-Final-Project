@@ -40,6 +40,8 @@ def q_learning(automated: bool = False):
         w.tick()
         w.render()
 
+        Q.run_iter()
+
         # sleep so the car doesn't disappear from rendering too fast
         time.sleep(DT / 5)
 
@@ -89,7 +91,7 @@ def forwardSearch(automated: bool = True):
             if env.collide_non_target(c1):
                 print("car crashed")
                 time.sleep(3)
-                sys.exit(0)  
+                sys.exit(0)
 
             print(reward)
             print(best_action)
@@ -99,15 +101,16 @@ def forwardSearch(automated: bool = True):
             print(c1.collisionPercent(target))
         print(env.reward_function(c1))
 
+
 if __name__ == "__main__":
-    task = 'q'
+    task = "q"
 
     if len(sys.argv) == 2:
         task = sys.argv[1]
 
-    if task == 'q':
+    if task == "q":
         q_learning()
-    elif task == 'f':
+    elif task == "f":
         forwardSearch()
     else:
         forwardSearch(False)

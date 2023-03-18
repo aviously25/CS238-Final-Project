@@ -12,10 +12,10 @@ class QLearning:
     def __init__(self, env: environment, num_sims=1000, num_episodes=100):
         self.env = env
         self.states_dim = [
-            env.w.visualizer.display_width / 2,  # num of possible x positions
-            env.w.visualizer.display_height / 2,  # num of possible y positions
-            env.car.max_speed * 10,  # possible speed values (2 decimal places)
-            int(2 * np.pi * 10),  # heading angle (2 decimal places)
+            int(env.w.visualizer.display_width / 2),  # num of possible x positions
+            int(env.w.visualizer.display_height / 2),  # num of possible y positions
+            int(env.car.max_speed * 10),  # possible speed values (1 decimal places)
+            int(2 * np.pi * 10),  # heading angle (1 decimal places)
         ]
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
@@ -24,11 +24,12 @@ class QLearning:
         self.learning_rate = 0.01
         self.exploration_prob = 0.1
 
+    # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self):
-        x = self.env.car.x
-        y = self.env.car.y
-        speed = self.env.car.speed
-        heading = self.env.car.heading
+        x = int(self.env.car.x * self.env.w.visualizer.ppm / 2)
+        y = int(self.env.car.y * self.env.w.visualizer.ppm / 2)
+        speed = int(self.env.car.speed * 10)
+        heading = int(self.env.car.heading * 10)
 
         return np.ravel_multi_index(
             (x, y, speed, heading),
@@ -62,7 +63,7 @@ class QLearning:
         action = (
             np.argmax(self.q_table[state])
             if randrange(0, 1) > self.exploration_prob
-            else choice([i for i in self.num_actions])
+            else choice([i for i in range(self.num_actions)])
         )
         reward, c1 = self.simulate_action(action, self.env.car, dt)
         next_state = self.get_state()
@@ -94,7 +95,7 @@ class ForwardSearch:
         c1.max_speed = 0.5
         c1.min_speed = -2.5
         c1.angular_velocity = car.angular_velocity
-        c1.set_control(0, 0) 
+        c1.set_control(0, 0)
 
         cont.do_action(action)
         c1.set_control(cont.steering, cont.throttle)
@@ -107,7 +108,7 @@ class ForwardSearch:
     def run_iter(self, car: Car, iter):
 
         # make 5 copies of self.car
-        dt = self.env.w.dt*20
+        dt = self.env.w.dt * 20
 
         none, n_c = self.simulate_action(0, car, dt)
         speed, n_s = self.simulate_action(1, car, dt)
