@@ -99,7 +99,6 @@ def forwardSearch(automated: bool = True):
         # check collision
         if c1.is_colliding(target):
             print(c1.collisionPercent(target))
-        print(env.reward_function(c1))
 
 
 if __name__ == "__main__":
