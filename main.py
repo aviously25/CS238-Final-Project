@@ -8,8 +8,14 @@ import numpy as np
 import time
 import random
 import sys
+import cProfile
+import pstats
 
-DT = 0.1  # time steps in terms of seconds. In other words, 1/dt is the FPS.
+DT = 0.5  # time steps in terms of seconds. In other words, 1/dt is the FPS.
+SPOT_NUM = 3
+PPM = 8
+WIDTH = 30
+HEIGHT = 40
 
 
 def run_policy(file):
@@ -17,9 +23,9 @@ def run_policy(file):
 
     q_table = np.loadtxt(file)
 
-    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
+    w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
     env = environment(w)
-    env.setUp(3)
+    env.setUp(SPOT_NUM)
 
     # initialize car
     car = Car(Point(15, 5), np.pi / 2, "blue")
@@ -59,13 +65,13 @@ def run_policy(file):
 
 def q_learning(automated: bool = False):
     print("Running q")
-    w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
+    w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
     env = environment(w)
-    target = env.setUp(1)
+    target = env.setUp(SPOT_NUM)
 
     Q = QLearning(env)
 
-    Q.train_threads(env, w)
+    Q.train(env, w, num_episodes=5000)
 
 
 def forwardSearch(automated: bool = True):
@@ -76,12 +82,12 @@ def forwardSearch(automated: bool = True):
     target = env.setUp(3)
 
     # add car
-    c1 = Car(Point(15, 3), np.pi / 2, "blue")
-    env.car = c1
-    c1.max_speed = 1
-    c1.min_speed = -2.5
-    c1.set_control(0, 0)
-    w.add(c1)
+    car = Car(Point(15, 3), np.pi / 2, "blue")
+    env.car = car
+    car.max_speed = 2.5
+    car.min_speed = -2.5
+    car.set_control(0, 0)
+    w.add(car)
 
     # render initial world
     w.render()
@@ -93,7 +99,7 @@ def forwardSearch(automated: bool = True):
     fs = ForwardSearch(env)
 
     while True:
-        c1.set_control(controller.steering, controller.throttle)
+        car.set_control(controller.steering, controller.throttle)
         w.tick()
         # print(c1.get_offset(target.heading))
         w.render()
@@ -111,7 +117,7 @@ def forwardSearch(automated: bool = True):
                 reward, best_action = fs.run_iter(env.car, 1)
                 controller.do_action(best_action)
 
-            if env.collide_non_target(c1):
+            if env.collide_non_target(car):
                 print("car crashed")
                 time.sleep(3)
                 sys.exit(0)
@@ -120,23 +126,38 @@ def forwardSearch(automated: bool = True):
             print(best_action)
 
         # check collision
-        if c1.is_colliding(target):
-            print(c1.collisionPercent(target))
-        print(env.reward_function(c1))
+        if car.is_colliding(target):
+            print(car.collisionPercent(target))
+        print(env.reward_function(car))
+
+        if (
+            # or car.check_bounds(w)
+            env.collide_non_target(car)
+            or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
+        ):
+            final_reward = env.reward_function(car)
+            return
+
+
+def show_stats():
+    p = pstats.Stats("stats.raw")
+    p.strip_dirs().sort_stats("tottime").print_stats()
 
 
 if __name__ == "__main__":
-    task = "q"
+    task = "start"
 
     if len(sys.argv) >= 2:
         task = sys.argv[1]
 
     if task == "q":
-        q_learning()
+        cProfile.run("q_learning()", "stats.raw")
     elif task == "f":
         forwardSearch()
     elif task == "p":
         file = sys.argv[2]
         run_policy(file)
+    elif task == "s":
+        show_stats()
     else:
         forwardSearch(False)

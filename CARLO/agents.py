@@ -95,7 +95,10 @@ class Car(RectangleEntity):
         self.color = color
         self.collidable = True
         self.rf = None
-        self.id = (int(time.monotonic_ns()))
+        self.start_time = time.time()
+
+    def get_alive_time(self):
+        return time.time() - self.start_time
 
     def get_offset(self, target: float):
         x = target
@@ -115,19 +118,19 @@ class Car(RectangleEntity):
             car = self
 
         return car.center.distanceTo(parking.spot.center)
-    
+
     def check_bounds(self, w):
 
         width = w.visualizer.display_width
         height = w.visualizer.display_height
         ppm = w.visualizer.ppm
 
-        if (self.x < 0 or self.x > width/ppm) \
-            or (self.y < 0 or self.y > height/ppm):
+        if (self.x < 0 or self.x > width / ppm) or (
+            self.y < 0 or self.y > height / ppm
+        ):
             return True
 
         return False
-            
 
 
 class Pedestrian(CircleEntity):

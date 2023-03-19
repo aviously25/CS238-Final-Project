@@ -33,7 +33,7 @@ class environment:
 
         if index == None:
             index = random.randint(0, 8)
-        self.park_index = index 
+        self.park_index = index
         selected = self.parkingSpots[index]
         selected.parkable = True
         self.target = selected
@@ -56,16 +56,13 @@ class environment:
 
         return False
 
-    def get_state(self):
-
-        return 0
-
-    def reward_function(self, car=None):
+    def reward_function(self, car):
         if car is None:
             car = self.car
 
-        value = (self.collide_non_target(car=car) * -100000)
-        value += (car.park_dist(self.target, car=car) * -1000)
-        value += (car.get_offset(self.target.heading) * -200)
+        value = self.collide_non_target(car=car) * -10000
+        value += car.park_dist(self.target, car=car) * (-100 * car.get_alive_time())
+        value += car.get_offset(self.target.heading) * -200
+        value += ((car.collisionPercent(self.target) * 100) ** 2) * 100
 
         return value

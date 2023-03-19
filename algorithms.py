@@ -6,17 +6,18 @@ from CARLO.geometry import Point
 
 import numpy as np
 from copy import deepcopy
-from random import random, choice
+from random import random, choice, randrange
 from tqdm import tqdm
 import time
-from threading import Thread
+
+# from threading import Thread
 
 MAX_CAR_SPEED = 2.5
 PPM_MODIFIER = 32
 
 
 class QLearning:
-    def __init__(self, env: environment, num_sims=1000, num_episodes=100):
+    def __init__(self, env: environment):
         self.env = env
         self.states_dim = [
             int(env.w.visualizer.display_width / PPM_MODIFIER)
@@ -28,10 +29,12 @@ class QLearning:
         ]
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
-        self.discount_factor = 0.95
-        self.q_table = np.full((self.num_states, self.num_actions), 0, dtype=np.float)
-        self.learning_rate = 0.1
-        self.exploration_prob = 0
+        self.discount = 0.7
+        self.q_table = np.full(
+            (self.num_states, self.num_actions), -1000, dtype=np.float
+        )
+        self.learning_rate = 0.01
+        self.exploration_prob = 0.1
 
     # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self, car):
@@ -46,189 +49,151 @@ class QLearning:
                 dims=tuple(self.states_dim),
             )
         except Exception:
-            return -1
+            return 0
 
-    def simulate_action(self, action: int, car: Car, dt: float):
-        test_car = Car(car.center, car.heading, "blue")
-        controller = AutomatedController()
-
-        test_car.velocity = car.velocity
-        test_car.heading = car.heading
-        test_car.lr = car.rear_dist
-        test_car.lf = test_car.lr
-        test_car.max_speed = MAX_CAR_SPEED
-        test_car.min_speed = -2.5
-        test_car.set_control(0, 0)
-
-        controller.do_action(action)
-        test_car.set_control(controller.steering, controller.throttle)
-        state = test_car.simulate_next_state(dt)
-
-        reward = self.env.reward_function(car=test_car)
-
-        return reward, test_car
-
-    def run_iter(self, car: Car):
+    def run_iter(self, car: Car, controller: AutomatedController):
         dt = self.env.w.dt
 
-        state = self.get_state(car)
-        action = (
-            np.argmax(self.q_table[state])
-            if random() < self.exploration_prob
-            else choice([i for i in range(self.num_actions)])
-        )
+        s = self.get_state(car)
+        best_action = np.argmax(self.q_table[s])
+        a = 0
+        if random() > self.exploration_prob:
+            a = best_action
+        else:
+            a = choice([i for i in range(self.num_actions)])
+
+        # print(
+        #     f"best action: {best_action} with q_value {self.q_table[s][a]} out of {self.q_table[s]}"
+        # )
+
+        controller.do_action(a)
+        car.set_control(controller.steering, controller.throttle)
+        r = self.env.reward_function(car)
         # print(np.argmax(self.q_table[state]), self.q_table[state][action])
-        reward, c1 = self.simulate_action(action, car, dt)
-        next_state = self.get_state(c1)
+        # r, c1 = self.simulate_action(a, car, dt)
+        sn = self.get_state(car)  # next state
+
+        car.tick(dt)
 
         try:
-            self.q_table[state, action] += self.learning_rate * (
-                reward
-                + self.discount_factor * max(self.q_table[next_state])
-                - self.q_table[state, action]
+            new_q_value = (1 - self.learning_rate) * self.q_table[
+                s, a
+            ] + self.learning_rate * (
+                r + self.discount * np.max(self.q_table[sn]) - self.q_table[s, a]
             )
-        except OverflowError as err:
-            print(err.args)
-            print(
-                self.learning_rate * reward
-                + self.discount_factor * max(self.q_table[next_state, :])
-            )
+            self.q_table[s, a] = new_q_value
+
+            # print(f"q_table[{s}, {a}] = {new_q_value}")
         except Exception as err:
             print(err.args)
 
-        return action
+        return a
 
-    def run_episode(self, env, car, controller, start_time, w):
+    def run_episode(self, env, w, car, controller):
+        start_time = time.time()
         while True:
-            action = self.run_iter(car)
-            controller.do_action(action)
-            car.set_control(controller.steering, controller.throttle)
+            self.run_iter(car, controller)
+            # controller.do_action(action)
+            # car.set_control(controller.steering, controller.throttle)
 
-            car.tick(w.dt)
             # w.render()
+            # time.sleep(w.dt / 50)
 
             if (
-                time.time() - start_time > 20
-                or car.check_bounds(w)
+                time.time() - start_time > 5
+                # or car.check_bounds(w)
                 or env.collide_non_target(car)
+                or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
             ):
+                print("time taken: ", time.time() - start_time)
                 final_reward = env.reward_function(car)
                 return
-
-        # w.render()
-
-        # sleep so the car doesn't disappear from rendering too fast
-        # time.sleep(w.dt / 10)
-
-        # check conditions to break
-
-    def train_threads(
-        self,
-        env: environment,
-        w: World,
-        num_episodes: int = 10000,
-        num_threads: int = 5,
-    ):
-        print(self.num_states)
-        for i in tqdm(range(num_episodes)):
-            # init variables for running an episode
-            start_time = time.time()
-
-            cars = []
-            controllers = []
-            threads = []
-            for i in range(num_threads):
-                cars.append(Car(Point(15, 5), np.pi / 2, "blue"))
-                cars[i].max_speed = MAX_CAR_SPEED
-                cars[i].min_speed = -2.5
-                cars[i].set_control(0, 0)
-                w.add(cars[i])
-                controllers.append(AutomatedController())
-                threads.append(
-                    Thread(
-                        target=self.run_episode,
-                        args=(env, cars[i], controllers[i], start_time, w),
-                    )
-                )
-
-            # run the episodes
-            for thread in threads:
-                thread.start()
-
-            for thread in threads:
-                thread.join()
-
-            w.render()
-
-            # sleep so the car doesn't disappear from rendering too fast
-            # time.sleep(w.dt / 10)
-
-            # remove car when done
-            for car in cars:
-                w.remove(car)
 
     def train(
         self,
         env: environment,
         w: World,
         num_episodes: int = 10000,
-        num_threads: int = 5,
     ):
         print(self.num_states)
         for i in tqdm(range(num_episodes)):
-
             # initialize car
-            car = Car(Point(15, 5), np.pi / 2, "blue")
+            rand_x = randrange(10, 20)
+            rand_y = randrange(0, 20)
+            car = Car(Point(rand_x, rand_y), np.pi / 2, "blue")
             car.max_speed = MAX_CAR_SPEED
-            car.min_speed = -2.5
             car.set_control(0, 0)
             w.add(car)
 
             # initialize controller
             controller = AutomatedController()
 
-            w.render()
-
-            # init variables for running an episode
-            start_time = time.time()
-            final_reward = 0
+            # w.render()
 
             # run the episode
-            while True:
-                car.set_control(controller.steering, controller.throttle)
-
-                action = self.run_iter(car)
-                controller.do_action(action)
-
-                w.tick()
-                w.render()
-
-                # sleep so the car doesn't disappear from rendering too fast
-                time.sleep(w.dt / 10)
-
-                # check conditions to break
-                if (
-                    time.time() - start_time > 20
-                    or car.check_bounds(w)
-                    or env.collide_non_target(car)
-                ):
-                    final_reward = env.reward_function(car)
-                    break
+            self.run_episode(env, w, car, controller)
 
             # remove car when done
-            print("Final Reward: ", final_reward)
             w.remove(car)
-    
+
+        self.write_policy()
+
     def write_policy(self):
-        dest = "policy_"+str(self.env.park_index)+ ".txt"
-        with open(dest, 'w') as f:
-            for s in range(len(self.q_table)): # for each state
-                #f.write(str(np.argmax(self.q_table[s]))+'\n') # action is the one with the highest reward
-                f.write("1\n")
-                if s %100000 == 0:
-                    print(s)
+        dest = "policy_" + str(self.env.park_index) + ".txt"
+        with open(dest, "w") as f:
+            policy = np.argmax(self.q_table, axis=1)
+            for action in policy:  # for each state
+                f.write(str(action) + "\n")  # action is the one with the highest reward
 
         print("done")
+
+    # def train_threads(
+    #     self,
+    #     env: environment,
+    #     w: World,
+    #     num_episodes: int = 1000,
+    #     num_threads: int = 20,
+    # ):
+    #     print(self.num_states)
+    #     for i in tqdm(range(num_episodes)):
+    #         # init variables for running an episode
+    #         start_time = time.time()
+    #
+    #         cars = []
+    #         controllers = []
+    #         threads = []
+    #         for i in range(num_threads):
+    #             cars.append(Car(Point(15, 5), np.pi / 2, "blue"))
+    #             cars[i].max_speed = MAX_CAR_SPEED
+    #             cars[i].min_speed = -2.5
+    #             cars[i].set_control(0, 0)
+    #             w.add(cars[i])
+    #             controllers.append(AutomatedController())
+    #             threads.append(
+    #                 Thread(
+    #                     target=self.run_episode,
+    #                     args=(env, cars[i], controllers[i], start_time, w),
+    #                 )
+    #             )
+    #
+    #         # run the episodes
+    #         for thread in threads:
+    #             thread.start()
+    #
+    #         for thread in threads:
+    #             thread.join()
+    #
+    #         w.render()
+    #
+    #         # sleep so the car doesn't disappear from rendering too fast
+    #         # time.sleep(w.dt / 10)
+    #
+    #         # remove car when done
+    #         for car in cars:
+    #             w.remove(car)
+    #
+    #     # write policy when all iters are done
+    #     self.write_policy()
 
 
 class ForwardSearch:
