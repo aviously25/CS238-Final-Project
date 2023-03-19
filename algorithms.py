@@ -74,9 +74,9 @@ class QLearning:
         r = self.env.reward_function(car)
         # print(np.argmax(self.q_table[state]), self.q_table[state][action])
         # r, c1 = self.simulate_action(a, car, dt)
-        sn = self.get_state(car)  # next state
 
         car.tick(dt)
+        sn = self.get_state(car)  # next state
 
         try:
             new_q_value = (1 - self.learning_rate) * self.q_table[
@@ -109,9 +109,9 @@ class QLearning:
                 or env.collide_non_target(car)
                 or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
             ):
-                print("time taken: ", time.time() - start_time)
+                # print("time taken: ", time.time() - start_time)
                 final_reward = env.reward_function(car)
-                return
+                return final_reward
 
     def train(
         self,
@@ -123,9 +123,9 @@ class QLearning:
         decay_factor = (self.epsilon_end / self.epsilon_start) ** (1 / num_episodes)
         for i in tqdm(range(num_episodes)):
             # initialize car
-            rand_x = randrange(10, 20)
-            rand_y = randrange(0, 20)
-            car = Car(Point(rand_x, rand_y), np.pi / 2, "blue")
+            # rand_x = randrange(10, 20)
+            # rand_y = randrange(0, 20)
+            car = Car(Point(15, 5), np.pi / 2, "blue")
             car.max_speed = MAX_CAR_SPEED
             car.set_control(0, 0)
             w.add(car)
@@ -136,12 +136,15 @@ class QLearning:
             # w.render()
 
             # run the episode
-            self.run_episode(env, w, car, controller)
+            reward = self.run_episode(env, w, car, controller)
+            if reward > 0:
+                w.render()
 
             # remove car when done
             w.remove(car)
 
-            # self.exploration_prob = self.exploration_prob * decay_factor
+            self.exploration_prob = self.exploration_prob * decay_factor
+            print(f"reward: {reward}, epsilon = {self.exploration_prob}")
 
             if i % 1000 == 0 and i > 0:
                 print("writing policy")
