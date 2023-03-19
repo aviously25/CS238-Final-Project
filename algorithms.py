@@ -35,7 +35,7 @@ class QLearning:
             (self.num_states, self.num_actions), -1000, dtype=np.float
         )
         self.learning_rate = 0.01
-        self.exploration_prob = 0.1
+        self.exploration_prob = 1
         self.epsilon_start = 1
         self.epsilon_end = 0.001
 
@@ -141,7 +141,7 @@ class QLearning:
             # remove car when done
             w.remove(car)
 
-            self.exploration_prob = self.exploration_prob * decay_factor
+            # self.exploration_prob = self.exploration_prob * decay_factor
 
             if i % 1000 == 0 and i > 0:
                 print("writing policy")
