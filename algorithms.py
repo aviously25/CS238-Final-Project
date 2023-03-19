@@ -20,7 +20,7 @@ MAX_RUN_TIME = 7  # in seconds
 class QLearning:
     def __init__(self, env: environment):
         self.env = env
-        self.states_dim = [
+        self.states_dim = [  # all +1 for indexing purposes
             int(env.w.visualizer.display_width / PPM_MODIFIER)
             + 1,  # num of possible x positions
             int(env.w.visualizer.display_height / PPM_MODIFIER)
@@ -146,7 +146,8 @@ class QLearning:
             self.exploration_prob = self.exploration_prob * decay_factor
             print(f"reward: {reward}, epsilon = {self.exploration_prob}")
 
-            if i % 1000 == 0 and i > 0:
+            # write policy every 100 iterations
+            if i % 100 == 0 and i > 0:
                 print("writing policy")
                 self.write_policy()
 
