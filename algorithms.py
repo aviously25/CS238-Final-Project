@@ -14,7 +14,7 @@ import time
 
 MAX_CAR_SPEED = 2.5
 PPM_MODIFIER = 32
-MAX_RUN_TIME = 7  # in seconds
+MAX_RUN_TIME = 0.05  # in seconds
 
 
 class QLearning:
@@ -30,14 +30,12 @@ class QLearning:
         ]
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
-        self.discount = 0.95
-        self.q_table = np.full(
-            (self.num_states, self.num_actions), -1000, dtype=np.float
-        )
-        self.learning_rate = 0.01
+        self.discount = 1
+        self.q_table = np.zeros((self.num_states, self.num_actions), dtype=np.float64)
+        self.learning_rate = 0.001
+
         self.exploration_prob = 1
-        self.epsilon_start = 1
-        self.epsilon_end = 0.001
+        self.epsilon_end = 0.0001
 
     # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self, car):
@@ -79,15 +77,12 @@ class QLearning:
         sn = self.get_state(car)  # next state
 
         try:
-            new_q_value = (1 - self.learning_rate) * self.q_table[
-                s, a
-            ] + self.learning_rate * (
+            new_q_value = self.q_table[s, a] + self.learning_rate * (
                 r + self.discount * np.max(self.q_table[sn]) - self.q_table[s, a]
             )
 
             self.q_table[s, a] = new_q_value
 
-            # print(f"q_table[{s}, {a}] = {new_q_value}")
         except Exception as err:
             print(err.args)
 
@@ -95,6 +90,7 @@ class QLearning:
 
     def run_episode(self, env, w, car, controller):
         start_time = time.time()
+        steps = 0
         while True:
             self.run_iter(car, controller)
             # controller.do_action(action)
@@ -102,16 +98,21 @@ class QLearning:
 
             # w.render()
             # time.sleep(w.dt / 50)
+            steps += 1
 
             if (
                 time.time() - start_time > MAX_RUN_TIME
                 # or car.check_bounds(w)
                 or env.collide_non_target(car)
-                or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
+                or (car.collisionPercent(env.target) == 1 and car.speed < 0.25)
             ):
-                # print("time taken: ", time.time() - start_time)
+
                 final_reward = env.reward_function(car)
-                return final_reward
+                # if final_reward > 0:
+                #     print(
+                #         f"final reward: {final_reward:.2f}, time taken: {time.time() - start_time : .4f}"
+                #     )
+                return final_reward, steps, time.time() - start_time
 
     def train(
         self,
@@ -119,8 +120,17 @@ class QLearning:
         w: World,
         num_episodes: int = 10000,
     ):
-        print(self.num_states)
-        decay_factor = (self.epsilon_end / self.epsilon_start) ** (1 / num_episodes)
+        # print(self.num_states)
+        ep_decay = (self.epsilon_end / self.exploration_prob) ** (1 / num_episodes)
+        # ep_decay = (self.exploration_prob - self.epsilon_end) / num_episodes
+        # lr_decay = (self.learning_rate - self.learning_rate_end) / num_episodes
+        # lr_decay_factor = (self.learning_rate_end / self.learning_rate) ** (
+        #     1 / num_episodes
+        # )
+        num_success = 0
+        avg_steps = 0
+        avg_reward = 0
+        avg_time = 0
         for i in tqdm(range(num_episodes)):
             # initialize car
             # rand_x = randrange(10, 20)
@@ -136,31 +146,45 @@ class QLearning:
             # w.render()
 
             # run the episode
-            reward = self.run_episode(env, w, car, controller)
+            reward, steps, time_taken = self.run_episode(env, w, car, controller)
             if reward > 0:
-                w.render()
+                num_success += 1
+            avg_reward += reward / 1000
+            avg_steps += steps / 1000
+            avg_time += time_taken / 1000
 
             # remove car when done
             w.remove(car)
 
-            self.exploration_prob = self.exploration_prob * decay_factor
-            print(f"reward: {reward}, epsilon = {self.exploration_prob}")
+            self.exploration_prob *= ep_decay
+            # self.learning_rate -= lr_decay
+            # print(
+            #     f"reward: {reward:>4.2f}, epsilon = {self.exploration_prob:.4f}, learning_rate = {self.learning_rate:.4f}"
+            # )
 
             # write policy every 100 iterations
-            if i % 100 == 0 and i > 0:
-                print("writing policy")
+            if i % 1000 == 0 and i > 0:
+                # print(
+                #     f"Success rate in last 1000 iter:{num_success:4d}, avg reward: {avg_reward:.4f}, avg_steps: {avg_steps:.4f}, avg_time: {avg_time:.4f}"
+                # )
+                num_success = 0
+                avg_steps = 0
+                avg_reward = 0
+                avg_time = 0
                 self.write_policy()
 
         self.write_policy()
 
     def write_policy(self):
-        dest = "policy_" + str(self.env.park_index) + ".txt"
+        dest = "policies/policy_" + str(self.env.park_index) + ".txt"
+        best_actions = np.argmax(self.q_table, axis=1)
         with open(dest, "w") as f:
-            policy = np.argmax(self.q_table, axis=1)
-            for action in policy:  # for each state
-                f.write(str(action) + "\n")  # action is the one with the highest reward
+            for best_action in best_actions:  # for each state
+                f.write(
+                    str(best_action) + "\n"
+                )  # action is the one with the highest reward
 
-        print("done")
+        # print("done")
 
     # def train_threads(
     #     self,

@@ -60,10 +60,18 @@ class environment:
         if car is None:
             car = self.car
 
-        value = self.collide_non_target(car=car) * -10000
-        value += car.park_dist(self.target, car=car) * (-100 * car.get_alive_time())
-        value += car.get_offset(self.target.heading) * -200
-        value += ((car.collisionPercent(self.target) * 100) ** 2) * 100
-        # value += -100 * car.get_alive_time() ** 2
+        colliding_non_target = self.collide_non_target(car)
+        collision_percent = car.collisionPercent(self.target)
+
+        value = car.park_dist(self.target, car=car) * -10
+
+        # max of this will be -1000
+        value += colliding_non_target * -1000
+        value += car.get_offset(self.target.heading) * -1
+        value += (
+            ((collision_percent * 10) ** 2) * 20
+            if not colliding_non_target
+            else collision_percent * 100
+        )
 
         return value

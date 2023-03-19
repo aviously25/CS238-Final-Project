@@ -4,40 +4,72 @@ from CARLO.geometry import Point
 from CARLO.interactive_controllers import AutomatedController, KeyboardController
 from environment import environment, parkingSpot
 from algorithms import ForwardSearch, QLearning
+from dqn import DQN
 import numpy as np
 import time
 import random
 import sys
 import cProfile
 import pstats
+import shutil
 
 DT = 0.5  # time steps in terms of seconds. In other words, 1/dt is the FPS.
-SPOT_NUM = 0
+SPOT_NUM = 4
 PPM = 8
 WIDTH = 30
 HEIGHT = 40
+MAX_TIME = 5
 
 
-def run_policy(file):
-    print("Running policy")
+def run_all_cont():
+    best_rewards = [-2000 for i in range(9)]
 
+    while True:
+        # for spot num
+        for i in range(9):
+            print(f"Running Q Learning on spot {i}")
+            q_learning(i)
+            file = f"policies/policy_{i}.txt"
+            reward = run_policy(i, render=False)
+
+            if reward > best_rewards[i]:
+                print("best reward:", reward)
+                shutil.move(file, f"policy_{i}_BEST.txt")
+                best_rewards[i] = reward
+
+
+def dqn_learning(spot=SPOT_NUM):
+    w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
+    env = environment(w)
+    target = env.setUp(spot)
+
+    dqn = DQN(env)
+
+    dqn.train(env, w, num_episodes=50000)
+
+
+def run_policy(spot=SPOT_NUM, render=True):
+    # print("Running policy")
+
+    file = f"policies/policy_{spot}.txt"
     q_table = np.loadtxt(file)
 
     w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
     env = environment(w)
-    env.setUp(SPOT_NUM)
+    env.setUp(spot)
 
     # initialize car
     car = Car(Point(15, 5), np.pi / 2, "blue")
     car.max_speed = 2.5
-    car.min_speed = -2.5
+    car.min_speed = 0
     car.set_control(0, 0)
     w.add(car)
 
     # initialize controller
     controller = AutomatedController()
 
-    w.render()
+    if render:
+        w.render()
 
     # init variables for running an episode
     q = QLearning(env)
@@ -52,33 +84,34 @@ def run_policy(file):
         controller.do_action(action)
 
         w.tick()
-        w.render()
 
-        # sleep so the car doesn't disappear from rendering too fast
-        time.sleep(w.dt / 5)
+        if render:
+            w.render()
+            # sleep so the car doesn't disappear from rendering too fast
+            time.sleep(w.dt / 5)
 
         if (
-            # time.time() - start_time > 7
+            time.time() - start_time > MAX_TIME
             # or car.check_bounds(w)
-            env.collide_non_target(car)
+            or env.collide_non_target(car)
             or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
         ):
             final_reward = env.reward_function(car)
-            return
+            break
 
     # remove car when done
-    w.remove(car)
+    print("final reward: ", final_reward)
+    return final_reward
 
 
-def q_learning(automated: bool = False):
-    print("Running q")
+def q_learning(spot=SPOT_NUM, automated: bool = False):
     w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
     env = environment(w)
-    target = env.setUp(SPOT_NUM)
+    target = env.setUp(spot)
 
     Q = QLearning(env)
 
-    Q.train(env, w, num_episodes=10000)
+    Q.train(env, w, num_episodes=100000)
 
 
 def forwardSearch(automated: bool = True):
@@ -86,7 +119,7 @@ def forwardSearch(automated: bool = True):
     # add parking spots
     w = World(DT, width=30, height=40, bg_color="lightgray", ppm=8)
     env = environment(w)
-    target = env.setUp(3)
+    target = env.setUp(SPOT_NUM)
 
     # add car
     car = Car(Point(15, 3), np.pi / 2, "blue")
@@ -148,23 +181,38 @@ def forwardSearch(automated: bool = True):
 
 def show_stats():
     p = pstats.Stats("stats.raw")
-    p.strip_dirs().sort_stats("tottime").print_stats()
+    p.strip_dirs().sort_stats("cumtime").print_stats()
 
 
 if __name__ == "__main__":
-    task = "start"
+    task = ""
 
     if len(sys.argv) >= 2:
         task = sys.argv[1]
 
     if task == "q":
-        cProfile.run("q_learning()", "stats.raw")
+        if len(sys.argv) > 2:
+            spot = int(sys.argv[2])
+            q_learning(spot)
+        else:
+            q_learning()
+    elif task == "d":
+        if len(sys.argv) > 2:
+            spot = int(sys.argv[2])
+            dqn_learning(spot)
+        else:
+            dqn_learning()
     elif task == "f":
         forwardSearch()
     elif task == "p":
-        file = sys.argv[2]
-        run_policy(file)
+        if len(sys.argv) > 2:
+            spot = int(sys.argv[2])
+            run_policy(spot)
+        else:
+            run_policy()
     elif task == "s":
         show_stats()
+    elif task == "a":
+        run_all_cont()
     else:
         forwardSearch(False)
