@@ -12,7 +12,7 @@ import cProfile
 import pstats
 
 DT = 0.5  # time steps in terms of seconds. In other words, 1/dt is the FPS.
-SPOT_NUM = 3
+SPOT_NUM = 0
 PPM = 8
 WIDTH = 30
 HEIGHT = 40
@@ -40,11 +40,12 @@ def run_policy(file):
     w.render()
 
     # init variables for running an episode
-    start_time = time.time()
-    run_sim = True
     q = QLearning(env)
+    start_time = time.time()
+    final_reward = 0
+
     # run the episode
-    while run_sim:
+    while True:
         car.set_control(controller.steering, controller.throttle)
 
         action = q_table[q.get_state(car)]
@@ -56,8 +57,14 @@ def run_policy(file):
         # sleep so the car doesn't disappear from rendering too fast
         time.sleep(w.dt / 5)
 
-        if time.time() - start_time > 20 or q.get_state(car) < 0:
-            run_sim = False
+        if (
+            # time.time() - start_time > 7
+            # or car.check_bounds(w)
+            env.collide_non_target(car)
+            or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
+        ):
+            final_reward = env.reward_function(car)
+            return
 
     # remove car when done
     w.remove(car)
@@ -71,7 +78,7 @@ def q_learning(automated: bool = False):
 
     Q = QLearning(env)
 
-    Q.train(env, w, num_episodes=5000)
+    Q.train(env, w, num_episodes=10000)
 
 
 def forwardSearch(automated: bool = True):

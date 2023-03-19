@@ -14,6 +14,7 @@ import time
 
 MAX_CAR_SPEED = 2.5
 PPM_MODIFIER = 32
+MAX_RUN_TIME = 7  # in seconds
 
 
 class QLearning:
@@ -29,12 +30,14 @@ class QLearning:
         ]
         self.num_states = int(np.prod(self.states_dim))
         self.num_actions = 5
-        self.discount = 0.7
+        self.discount = 0.95
         self.q_table = np.full(
             (self.num_states, self.num_actions), -1000, dtype=np.float
         )
         self.learning_rate = 0.01
         self.exploration_prob = 0.1
+        self.epsilon_start = 1
+        self.epsilon_end = 0.001
 
     # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self, car):
@@ -81,6 +84,7 @@ class QLearning:
             ] + self.learning_rate * (
                 r + self.discount * np.max(self.q_table[sn]) - self.q_table[s, a]
             )
+
             self.q_table[s, a] = new_q_value
 
             # print(f"q_table[{s}, {a}] = {new_q_value}")
@@ -100,7 +104,7 @@ class QLearning:
             # time.sleep(w.dt / 50)
 
             if (
-                time.time() - start_time > 5
+                time.time() - start_time > MAX_RUN_TIME
                 # or car.check_bounds(w)
                 or env.collide_non_target(car)
                 or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
@@ -116,6 +120,7 @@ class QLearning:
         num_episodes: int = 10000,
     ):
         print(self.num_states)
+        decay_factor = (self.epsilon_end / self.epsilon_start) ** (1 / num_episodes)
         for i in tqdm(range(num_episodes)):
             # initialize car
             rand_x = randrange(10, 20)
@@ -135,6 +140,12 @@ class QLearning:
 
             # remove car when done
             w.remove(car)
+
+            self.exploration_prob = self.exploration_prob * decay_factor
+
+            if i % 1000 == 0 and i > 0:
+                print("writing policy")
+                self.write_policy()
 
         self.write_policy()
 

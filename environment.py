@@ -64,5 +64,6 @@ class environment:
         value += car.park_dist(self.target, car=car) * (-100 * car.get_alive_time())
         value += car.get_offset(self.target.heading) * -200
         value += ((car.collisionPercent(self.target) * 100) ** 2) * 100
+        value += -100 * car.get_alive_time() ** 2
 
         return value
