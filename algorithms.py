@@ -12,7 +12,7 @@ import time
 
 # from threading import Thread
 
-MAX_CAR_SPEED = 4
+MAX_CAR_SPEED = 2.5
 PPM_MODIFIER = 8
 MAX_RUN_TIME = 0.05  # in seconds
 STAT_RATE = 500
