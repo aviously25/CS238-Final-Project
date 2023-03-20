@@ -46,12 +46,10 @@ class Entity:
             return (self.inner_radius + self.outer_radius) / 2.0
         raise NotImplementedError
 
-    
     def simulate_next_state(self, dt: float):
-        
+
         speed = self.speed
-        heading = self.heading 
-        
+        heading = self.heading
 
         lr = self.rear_dist
         lf = lr  # we assume the center of mass is the same as the geometric center of the entity
@@ -73,41 +71,44 @@ class Entity:
         new_velocity = Point(
             new_speed * np.cos(new_heading), new_speed * np.sin(new_heading)
         )
-        calculations =  (new_center, new_heading, new_velocity, new_acceleration, new_angular_velocity)
+        calculations = (
+            new_center,
+            new_heading,
+            new_velocity,
+            new_acceleration,
+            new_angular_velocity,
+        )
         self.center = calculations[0]
-        
+
         self.heading = np.mod(
             calculations[1], 2 * np.pi
         )  # wrap the heading angle between 0 and +2pi
-        self.velocity = calculations[2] 
+        self.velocity = calculations[2]
         self.acceleration = calculations[3]
         self.angular_velocity = calculations[4]
         return calculations
-    
 
     def tick(self, dt: float):
         if self.movable:
-            
+
             """
             # Point-mass dynamics based on
             # "Active Preference-Based Learning of Reward Functions" by
             # Dorsa Sadigh, Anca D. Dragan, S. Shankar Sastry, Sanjit A. Seshia
-            
+
             new_angular_velocity = speed * self.inputSteering
             new_acceleration = self.inputAcceleration - self.friction * speed
-            
+
             new_heading = heading + (self.angular_velocity + new_angular_velocity) * dt / 2.
             new_speed = np.clip(speed + (self.acceleration + new_acceleration) * dt / 2., self.min_speed, self.max_speed)
-            
+
             new_velocity = Point(((speed + new_speed) / 2.) * np.cos((new_heading + heading) / 2.),
                                     ((speed + new_speed) / 2.) * np.sin((new_heading + heading) / 2.))
-            
+
             new_center = self.center + (self.velocity + new_velocity) * dt / 2.
-            
+
             """
             self.simulate_next_state(dt)
-            
-           
 
             self.buildGeometry()
 

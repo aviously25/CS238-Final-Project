@@ -6,15 +6,16 @@ from CARLO.geometry import Point
 
 import numpy as np
 from copy import deepcopy
-from random import random, choice, randrange
+from random import random, choice
 from tqdm import tqdm
 import time
 
 # from threading import Thread
 
-MAX_CAR_SPEED = 2.5
-PPM_MODIFIER = 32
+MAX_CAR_SPEED = 4
+PPM_MODIFIER = 8
 MAX_RUN_TIME = 0.05  # in seconds
+STAT_RATE = 500
 
 
 class QLearning:
@@ -32,10 +33,12 @@ class QLearning:
         self.num_actions = 5
         self.discount = 1
         self.q_table = np.zeros((self.num_states, self.num_actions), dtype=np.float64)
-        self.learning_rate = 0.001
+
+        self.learning_rate = 0.4
+        self.learning_rate_end = 0.01
 
         self.exploration_prob = 1
-        self.epsilon_end = 0.0001
+        self.epsilon_end = 0.01
 
     # the function will take the 4-parameter vector and turn it into 1 number
     def get_state(self, car):
@@ -69,19 +72,23 @@ class QLearning:
 
         controller.do_action(a)
         car.set_control(controller.steering, controller.throttle)
+        car.simulate_next_state(dt)
         r = self.env.reward_function(car)
+        # time.sleep(1)
         # print(np.argmax(self.q_table[state]), self.q_table[state][action])
         # r, c1 = self.simulate_action(a, car, dt)
 
-        car.tick(dt)
         sn = self.get_state(car)  # next state
 
         try:
             new_q_value = self.q_table[s, a] + self.learning_rate * (
-                r + self.discount * np.max(self.q_table[sn]) - self.q_table[s, a]
+                r + self.discount * np.argmax(self.q_table[sn]) - self.q_table[s, a]
             )
 
             self.q_table[s, a] = new_q_value
+            # print(
+            #     f"q_table[{s}, {a}] = {np.unravel_index(s, self.states_dim)}, reward={r}, next_state = {np.unravel_index(sn, self.states_dim)}"
+            # )
 
         except Exception as err:
             print(err.args)
@@ -93,8 +100,7 @@ class QLearning:
         steps = 0
         while True:
             self.run_iter(car, controller)
-            # controller.do_action(action)
-            # car.set_control(controller.steering, controller.throttle)
+            # print(np.unravel_index(self.get_state(car), self.states_dim))
 
             # w.render()
             # time.sleep(w.dt / 50)
@@ -102,9 +108,9 @@ class QLearning:
 
             if (
                 time.time() - start_time > MAX_RUN_TIME
-                # or car.check_bounds(w)
+                or car.check_bounds(w)
                 or env.collide_non_target(car)
-                or (car.collisionPercent(env.target) == 1 and car.speed < 0.25)
+                or (car.collisionPercent(env.target) > 0.99 and car.speed < 0.25)
             ):
 
                 final_reward = env.reward_function(car)
@@ -118,19 +124,17 @@ class QLearning:
         self,
         env: environment,
         w: World,
-        num_episodes: int = 10000,
+        num_episodes: int = 100000,
     ):
-        # print(self.num_states)
-        ep_decay = (self.epsilon_end / self.exploration_prob) ** (1 / num_episodes)
+        print(self.num_states)
+        print(self.states_dim)
+        ep_decay = self.epsilon_end ** (1 / num_episodes)
+        lr_decay = (self.learning_rate_end / self.learning_rate) ** (1 / num_episodes)
         # ep_decay = (self.exploration_prob - self.epsilon_end) / num_episodes
         # lr_decay = (self.learning_rate - self.learning_rate_end) / num_episodes
-        # lr_decay_factor = (self.learning_rate_end / self.learning_rate) ** (
-        #     1 / num_episodes
-        # )
-        num_success = 0
-        avg_steps = 0
-        avg_reward = 0
-        avg_time = 0
+
+        stats = np.zeros((int(num_episodes / STAT_RATE), 7))
+        best_policy = 0
         for i in tqdm(range(num_episodes)):
             # initialize car
             # rand_x = randrange(10, 20)
@@ -139,52 +143,123 @@ class QLearning:
             car.max_speed = MAX_CAR_SPEED
             car.set_control(0, 0)
             w.add(car)
+            # print(self.get_state(car))
 
             # initialize controller
             controller = AutomatedController()
 
-            # w.render()
-
             # run the episode
             reward, steps, time_taken = self.run_episode(env, w, car, controller)
-            if reward > 0:
-                num_success += 1
-            avg_reward += reward / 1000
-            avg_steps += steps / 1000
-            avg_time += time_taken / 1000
+
+            # decay learning rate and exploration_prob
+            self.learning_rate *= lr_decay
+            self.exploration_prob *= ep_decay
+
+            # save stats
+            s_ind = int(i / STAT_RATE)
+            stats[s_ind][1] += int(np.clip(reward, 0, 1))
+            stats[s_ind][2] += reward / STAT_RATE
+            stats[s_ind][3] += steps / STAT_RATE
+            stats[s_ind][4] += time_taken / STAT_RATE
+            stats[s_ind][6] += car.park_dist(env.target) / STAT_RATE
+            # num_success += int(np.clip(reward, 0, 1))
+            # avg_reward += reward / STAT_RATE
+            # avg_steps += steps / STAT_RATE
+            # avg_time += time_taken / STAT_RATE
 
             # remove car when done
             w.remove(car)
 
-            self.exploration_prob *= ep_decay
-            # self.learning_rate -= lr_decay
             # print(
             #     f"reward: {reward:>4.2f}, epsilon = {self.exploration_prob:.4f}, learning_rate = {self.learning_rate:.4f}"
             # )
 
             # write policy every 100 iterations
-            if i % 1000 == 0 and i > 0:
-                # print(
-                #     f"Success rate in last 1000 iter:{num_success:4d}, avg reward: {avg_reward:.4f}, avg_steps: {avg_steps:.4f}, avg_time: {avg_time:.4f}"
-                # )
-                num_success = 0
-                avg_steps = 0
-                avg_reward = 0
-                avg_time = 0
-                self.write_policy()
+            if i % STAT_RATE == 0 and i > 0:
+                s_ind = int(i / STAT_RATE) - 1
+                print(
+                    f"Success in last {STAT_RATE} iter:{stats[s_ind][1]:4f}, avg reward: {stats[s_ind][2]:.4f}, avg steps: {stats[s_ind][3]:.4f}, avg time: {stats[s_ind][4]:.4f}, epsilon: {self.exploration_prob: .4f}, avg dist to parking: {stats[s_ind][6]}"
+                )
+                policy_reward = self.test_policy()
+                stats[s_ind][5] = policy_reward
 
-        self.write_policy()
+                best = False
+                if policy_reward > best_policy:
+                    best_policy = policy_reward
+                    best = True
 
-    def write_policy(self):
-        dest = "policies/policy_" + str(self.env.park_index) + ".txt"
+                self.write_policy(best)
+                # self.write_stats(stats)
+
+    def write_policy(self, best: bool = False):
+        dest = f"policies/policy_{self.env.park_index}.txt"
+        if best:
+            dest = f"policies/policy_{self.env.park_index}_BEST.txt"
+
         best_actions = np.argmax(self.q_table, axis=1)
         with open(dest, "w") as f:
             for best_action in best_actions:  # for each state
-                f.write(
-                    str(best_action) + "\n"
-                )  # action is the one with the highest reward
+                f.write(f"{best_action}\n")  # action is the one with the highest reward
 
-        # print("done")
+    def write_stats(self, stats):
+        dest = "stats/stat_" + str(self.env.park_index) + ".txt"
+        np.savetxt(
+            dest,
+            stats,
+            delimiter=",",
+            header="iteration,num_successes,avg_reward,avg_steps,avg_time,policy_reward,avg_dist_to_parking",
+        )
+
+    def test_policy(self):
+        spot = self.env.park_index
+        best_actions = np.argmax(self.q_table, axis=1)
+
+        w = deepcopy(self.env.w)
+        env = environment(w)
+        env.setUp(spot)
+
+        # initialize car
+        car = Car(Point(15, 5), np.pi / 2, "blue")
+        car.max_speed = MAX_CAR_SPEED
+        car.min_speed = 0
+        car.set_control(0, 0)
+        w.add(car)
+
+        # initialize controller
+        controller = AutomatedController()
+
+        # w.render()
+
+        # init variables for running an episode
+        start_time = time.time()
+        final_reward = 0
+
+        # run the episode
+        while True:
+
+            action = best_actions[self.get_state(car)]
+            controller.do_action(action)
+
+            car.set_control(controller.steering, controller.throttle)
+
+            w.tick()
+
+            if (
+                time.time() - start_time > MAX_RUN_TIME
+                # or car.check_bounds(w)
+                or env.collide_non_target(car)
+                or (car.collisionPercent(env.target) == 1 and car.speed < 0.2)
+            ):
+                final_reward = env.reward_function(car)
+                break
+
+        # w.render()
+
+        # remove car when done
+        print("final policy reward: ", final_reward)
+        return final_reward
+
+    # print("done")
 
     # def train_threads(
     #     self,

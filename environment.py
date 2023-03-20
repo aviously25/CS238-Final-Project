@@ -65,7 +65,6 @@ class environment:
 
         value = car.park_dist(self.target, car=car) * -10
 
-        # max of this will be -1000
         value += colliding_non_target * -1000
         value += car.get_offset(self.target.heading) * -1
         value += (

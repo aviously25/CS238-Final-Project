@@ -4,7 +4,6 @@ from CARLO.geometry import Point
 from CARLO.interactive_controllers import AutomatedController, KeyboardController
 from environment import environment, parkingSpot
 from algorithms import ForwardSearch, QLearning
-from dqn import DQN
 import numpy as np
 import time
 import random
@@ -14,7 +13,7 @@ import pstats
 import shutil
 
 DT = 0.5  # time steps in terms of seconds. In other words, 1/dt is the FPS.
-SPOT_NUM = 4
+SPOT_NUM = 0
 PPM = 8
 WIDTH = 30
 HEIGHT = 40
@@ -38,20 +37,12 @@ def run_all_cont():
                 best_rewards[i] = reward
 
 
-def dqn_learning(spot=SPOT_NUM):
-    w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
-    env = environment(w)
-    target = env.setUp(spot)
-
-    dqn = DQN(env)
-
-    dqn.train(env, w, num_episodes=50000)
-
-
-def run_policy(spot=SPOT_NUM, render=True):
+def run_policy(spot=SPOT_NUM, render=True, best=False):
     # print("Running policy")
 
-    file = f"policies/policy_{spot}.txt"
+    best_mod = "_BEST" if best else ""
+    file = f"policies/policy_{spot}{best_mod}.txt"
+    print(best)
     q_table = np.loadtxt(file)
 
     w = World(DT, width=WIDTH, height=HEIGHT, bg_color="lightgray", ppm=PPM)
@@ -60,7 +51,7 @@ def run_policy(spot=SPOT_NUM, render=True):
 
     # initialize car
     car = Car(Point(15, 5), np.pi / 2, "blue")
-    car.max_speed = 2.5
+    car.max_speed = 4
     car.min_speed = 0
     car.set_control(0, 0)
     w.add(car)
@@ -78,10 +69,11 @@ def run_policy(spot=SPOT_NUM, render=True):
 
     # run the episode
     while True:
-        car.set_control(controller.steering, controller.throttle)
 
         action = q_table[q.get_state(car)]
+        print(action)
         controller.do_action(action)
+        car.set_control(controller.steering, controller.throttle)
 
         w.tick()
 
@@ -173,6 +165,7 @@ def forwardSearch(automated: bool = True):
         if (
             # or car.check_bounds(w)
             env.collide_non_target(car)
+            # or car.speed < 0.01
             or (car.collisionPercent(env.target) == 1 and car.speed < 0.1)
         ):
             final_reward = env.reward_function(car)
@@ -196,20 +189,19 @@ if __name__ == "__main__":
             q_learning(spot)
         else:
             q_learning()
-    elif task == "d":
-        if len(sys.argv) > 2:
-            spot = int(sys.argv[2])
-            dqn_learning(spot)
-        else:
-            dqn_learning()
     elif task == "f":
         forwardSearch()
     elif task == "p":
+        spot = SPOT_NUM
+        best = False
+
         if len(sys.argv) > 2:
             spot = int(sys.argv[2])
-            run_policy(spot)
-        else:
-            run_policy()
+
+        if len(sys.argv) > 3:
+            best = True
+
+        run_policy(spot, True, best)
     elif task == "s":
         show_stats()
     elif task == "a":
